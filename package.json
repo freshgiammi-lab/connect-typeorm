@@ -1,0 +1,34 @@
+{
+  "name": "connect-typeorm",
+  "description": "A TypeORM-based session store",
+  "version": "0.1.0",
+  "main": "out/index",
+  "typings": "out/index",
+  "repository": "https://github.com/makepost/typeorm-static",
+  "author": "makepost",
+  "license": "MIT",
+  "devDependencies": {
+    "pre-commit": "^1.2.2",
+    "tslint": "^5.8.0",
+    "typeorm": "^0.1.2",
+    "typescript": "^2.6.1"
+  },
+  "dependencies": {
+    "@types/debug": "^0.0.30",
+    "@types/express-session": "^1.15.5",
+    "debug": "^3.1.0",
+    "express-session": "^1.15.6"
+  },
+  "peerDependencies": {
+    "typeorm": "^0.1.2"
+  },
+  "scripts": {
+    "format": "tslint --fix 'src/**/*.ts'",
+    "lint": "tslint 'src/**/*.ts'",
+    "prepare": "tsc -p tsconfig.json"
+  },
+  "pre-commit": [
+    "lint",
+    "prepare"
+  ]
+}
