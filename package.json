@@ -4,7 +4,7 @@
   "version": "1.0.0",
   "main": "out/index",
   "typings": "out/index",
-  "repository": "https://github.com/makepost/typeorm-static",
+  "repository": "https://github.com/makepost/connect-typeorm",
   "author": "makepost",
   "license": "MIT",
   "devDependencies": {
