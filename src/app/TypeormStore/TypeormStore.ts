@@ -42,12 +42,11 @@ export class TypeormStore extends Store {
   /**
    * Attempts to fetch session by the given `sid`.
    */
-
   public get = (sid: string, fn: (error?: any, result?: any) => void) => {
     this.debug('GET "%s"', sid);
 
     this.createQueryBuilder()
-      .andWhere('id = :id', { id: sid })
+      .andWhere("id = :id", { id: sid })
       .getOne()
       .then((session) => {
         if (!session) { return fn(); }
@@ -84,7 +83,7 @@ export class TypeormStore extends Store {
     this.debug('SET "%s" %s ttl:%s', sid, json, ttl);
 
     this.repository.save({
-      expiredAt: Date.now() + ttl,
+      expiredAt: Date.now() + ttl * 1000,
       id: sid,
       json,
     })
@@ -122,7 +121,7 @@ export class TypeormStore extends Store {
 
     this.debug('EXPIRE "%s" ttl:%s', sid, ttl);
     this.repository.updateById(sid, {
-      expiredAt: Date.now() + ttl,
+      expiredAt: Date.now() + ttl * 1000,
     })
       .then(() => {
         this.debug("EXPIRE complete");
@@ -158,8 +157,8 @@ export class TypeormStore extends Store {
   }
 
   private createQueryBuilder() {
-    return this.repository.createQueryBuilder('session')
-      .where('session.expiredAt > :expiredAt', { expiredAt: Date.now() })
+    return this.repository.createQueryBuilder("session")
+      .where("session.expiredAt > :expiredAt", { expiredAt: Date.now() });
   }
 
   private getTTL(sess: any, sid?: string) {
