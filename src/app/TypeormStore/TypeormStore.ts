@@ -20,7 +20,7 @@ export type Ttl = number | ((store: TypeormStore, sess: any, sid?: string) => nu
 export class TypeormStore extends Store {
   private debug = Debug("connect:typeorm");
 
-  private repository: Repository<ISession>;
+  private repository!: Repository<ISession>;
 
   private ttl: Ttl | undefined;
 
@@ -120,9 +120,11 @@ export class TypeormStore extends Store {
     const ttl = this.getTTL(sess);
 
     this.debug('EXPIRE "%s" ttl:%s', sid, ttl);
-    this.repository.updateById(sid, {
-      expiredAt: Date.now() + ttl * 1000,
-    })
+    this.repository
+      .createQueryBuilder()
+      .update({ expiredAt: Date.now() + ttl * 1000 })
+      .whereInIds([sid])
+      .execute()
       .then(() => {
         this.debug("EXPIRE complete");
         fn();

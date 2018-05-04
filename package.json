@@ -20,7 +20,7 @@
     "express-session": "^1.15.6"
   },
   "peerDependencies": {
-    "typeorm": "^0.1.2"
+    "typeorm": "^0.1.2 || ^0.2.5"
   },
   "scripts": {
     "format": "tslint --fix 'src/**/*.ts'",
