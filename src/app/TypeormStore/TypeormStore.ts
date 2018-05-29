@@ -66,9 +66,13 @@ export class TypeormStore extends Store {
   /**
    * Commits the given `sess` object associated with the given `sid`.
    */
-  public set = (sid: string, sess: any, fn: (error?: any) => void) => {
+  public set = (sid: string, sess: any, fn?: (error?: any) => void) => {
     const args = [sid];
     let json: string;
+
+    if (!fn) {
+      throw new Error('Argument fn must be specified.');
+    }
 
     try {
       json = JSON.stringify(sess);
@@ -100,8 +104,12 @@ export class TypeormStore extends Store {
   /**
    * Destroys the session associated with the given `sid`.
    */
-  public destroy = (sid: string | string[], fn: (error?: any) => void) => {
+  public destroy = (sid: string | string[], fn?: (error?: any) => void) => {
     this.debug('DEL "%s"', sid);
+
+    if (!fn) {
+      throw new Error('Argument fn must be specified');
+    }
 
     Promise.all((Array.isArray(sid) ? sid : [sid]).map((x) => this.repository.deleteById(x)))
       .then(() => {
@@ -116,8 +124,12 @@ export class TypeormStore extends Store {
   /**
    * Refreshes the time-to-live for the session with the given `sid`.
    */
-  public touch(sid: string, sess: any, fn: (error?: any) => void) {
+  public touch = (sid: string, sess: any, fn?: (error?: any) => void) => {
     const ttl = this.getTTL(sess);
+
+    if (!fn) {
+      throw new Error('Argument fn must be specified');
+    }
 
     this.debug('EXPIRE "%s" ttl:%s', sid, ttl);
     this.repository
