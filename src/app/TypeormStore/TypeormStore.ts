@@ -103,7 +103,7 @@ export class TypeormStore extends Store {
   public destroy = (sid: string | string[], fn: (error?: any) => void) => {
     this.debug('DEL "%s"', sid);
 
-    Promise.all((Array.isArray(sid) ? sid : [sid]).map((x) => this.repository.deleteById(x)))
+    Promise.all((Array.isArray(sid) ? sid : [sid]).map((x) => this.repository.delete({ id: x })))
       .then(() => {
         fn();
       })
