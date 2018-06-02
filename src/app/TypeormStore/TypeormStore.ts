@@ -116,7 +116,7 @@ export class TypeormStore extends Store {
   /**
    * Refreshes the time-to-live for the session with the given `sid`.
    */
-  public touch(sid: string, sess: any, fn: (error?: any) => void) {
+  public touch = (sid: string, sess: any, fn: (error?: any) => void) => {
     const ttl = this.getTTL(sess);
 
     this.debug('EXPIRE "%s" ttl:%s', sid, ttl);
