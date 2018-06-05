@@ -70,14 +70,10 @@ export class TypeormStore extends Store {
     const args = [sid];
     let json: string;
 
-    if (!fn) {
-      throw new Error('Argument fn must be specified.');
-    }
-
     try {
       json = JSON.stringify(sess);
     } catch (er) {
-      return fn(er);
+      return fn ? fn(er) : undefined;
     }
 
     args.push(json);
@@ -93,10 +89,16 @@ export class TypeormStore extends Store {
     })
       .then(() => {
         this.debug("SET complete");
-        fn();
+
+        if (fn) {
+          fn();
+        }
       })
       .catch((er) => {
-        fn(er);
+        if (fn) {
+          fn(er);
+        }
+
         this.handleError(er);
       });
   }
@@ -107,16 +109,17 @@ export class TypeormStore extends Store {
   public destroy = (sid: string | string[], fn?: (error?: any) => void) => {
     this.debug('DEL "%s"', sid);
 
-    if (!fn) {
-      throw new Error('Argument fn must be specified');
-    }
-
-    Promise.all((Array.isArray(sid) ? sid : [sid]).map((x) => this.repository.deleteById(x)))
+    Promise.all((Array.isArray(sid) ? sid : [sid]).map((x) => this.repository.delete({ id: x })))
       .then(() => {
-        fn();
+        if (fn) {
+          fn();
+        }
       })
       .catch((er) => {
-        fn(er);
+        if (fn) {
+          fn(er);
+        }
+
         this.handleError(er);
       });
   }
@@ -127,10 +130,6 @@ export class TypeormStore extends Store {
   public touch = (sid: string, sess: any, fn?: (error?: any) => void) => {
     const ttl = this.getTTL(sess);
 
-    if (!fn) {
-      throw new Error('Argument fn must be specified');
-    }
-
     this.debug('EXPIRE "%s" ttl:%s', sid, ttl);
     this.repository
       .createQueryBuilder()
@@ -139,10 +138,16 @@ export class TypeormStore extends Store {
       .execute()
       .then(() => {
         this.debug("EXPIRE complete");
-        fn();
+
+        if (fn) {
+          fn();
+        }
       })
       .catch((er) => {
-        fn(er);
+        if (fn) {
+          fn(er);
+        }
+
         this.handleError(er);
       });
   }
