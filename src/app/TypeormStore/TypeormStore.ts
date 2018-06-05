@@ -1,7 +1,8 @@
 /*!
  * Connect - TypeORM
  * Copyright(c) 2012 TJ Holowaychuk <tj@vision-media.ca>
- * Copyright(c) 2017 makepost <makepost@firemail.cc>
+ * Copyright(c) 2017, 2018 makepost <makepost@firemail.cc>
+ * Copyright(c) 2018 Nathan Phillip Brink <ohnobinki@ohnopublishing.net>
  * MIT Licensed
  */
 

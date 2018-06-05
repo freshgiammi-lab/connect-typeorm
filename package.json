@@ -6,6 +6,9 @@
   "typings": "out/index",
   "repository": "https://github.com/makepost/connect-typeorm",
   "author": "makepost",
+  "contributors": [
+    "Nathan Phillip Brink <ohnobinki@ohnopublishing.net>"
+  ],
   "license": "MIT",
   "devDependencies": {
     "pre-commit": "^1.2.2",
