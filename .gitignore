@@ -57,7 +57,8 @@ typings/
 # dotenv environment variables file
 .env
 
-# Yarn lock
+# Lock files
+package-lock.json
 yarn.lock
 
 # TypeScript output

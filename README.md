@@ -23,13 +23,13 @@ import { Bigint } from "typeorm-static";
 export class Session implements ISession {
   @Index()
   @Column("bigint", { transformer: Bigint })
-  public expiredAt: number;
+  public expiredAt = Date.now();
 
   @PrimaryColumn("varchar", { length: 255 })
-  public id: string;
+  public id = "";
 
-  @Column()
-  public json: string;
+  @Column("text")
+  public json = "";
 }
 ```
 

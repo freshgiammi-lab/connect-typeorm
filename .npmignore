@@ -1,10 +1,14 @@
+.nyc_output/
 .vscode/
 bin/app/
+coverage/
 src/
 src/app/
+src/app/*/*.test.*
 out/updateReadme*
 .gitattributes
 .gitignore
+package-lock.json
 tsconfig.json
 tslint.json
 yarn.lock
