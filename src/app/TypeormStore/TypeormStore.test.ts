@@ -13,6 +13,7 @@ import {
   Entity,
   Index,
   PrimaryColumn,
+  Repository,
 } from "typeorm";
 import { ISession } from "../../domain/Session/ISession";
 import { TypeormStore } from "./TypeormStore";
@@ -37,15 +38,90 @@ test("destroys", async (t) => {
   t.is((await request.post("/views")).body, 1);
 });
 
-test("reloads", async (t) => {
-  const { request }: Test = t.context;
+test("sets, cleaning up expired", async (t) => {
+  const { express, repository, request, ttl }: Test = t.context;
 
+  const request1 = Supertest.agent(express);
+  const request2 = Supertest.agent(express);
+  const request3 = Supertest.agent(express);
+  const request4 = Supertest.agent(express);
+  const request5 = Supertest.agent(express);
+
+  // Users 0 and 1 appear.
   t.is((await request.post("/views")).body, 1);
-  t.is((await request.post("/views")).body, 2);
-  t.is((await request.get("/views")).body, 2);
+  t.is((await request1.post("/views")).body, 1);
+  t.is((await repository.count()), 2);
+
+  /**
+   * User 0 returns. 1 hasn't expired yet. 2 and 3 appear.
+   */
+  await sleep(ttl / 2);
+  t.is((await request.get("/views")).body, 1);
+  t.is((await request2.post("/views")).body, 1);
+  t.is((await request3.post("/views")).body, 1);
+  t.is((await repository.count()), 4);
+
+  /**
+   * Users 0 and 2 return. 1 expired, but remains because nobody new
+   * appears. 3 hasn't expired yet.
+   */
+  await sleep(ttl / 2);
+  t.is((await request.get("/views")).body, 1);
+  t.is((await request2.get("/views")).body, 1);
+  t.is((await repository.count()), 4);
+
+  /**
+   * User 2 returns. 4 appears. Of the expired 1 and 3, somebody is
+   * removed, and the other remains. 0 hasn't expired yet.
+   */
+  await sleep(ttl / 2);
+  t.is((await request2.get("/views")).body, 1);
+  t.is((await request4.post("/views")).body, 1);
+  t.is((await repository.count()), 4);
+
+  /**
+   * Users 0, 2 and 4 return. 5 appears. Of the expired 1 and 3, the
+   * remaining other is removed.
+   */
+  t.is((await request.get("/views")).body, 1);
+  await sleep(ttl / 2);
+  t.is((await request.get("/views")).body, 1);
+  t.is((await request2.get("/views")).body, 1);
+  t.is((await request4.get("/views")).body, 1);
+  t.is((await request5.post("/views")).body, 1);
+  t.is((await repository.count()), 4);
+
+  /**
+   * Users 0, 2, 4 and 5 return. 1 appears. Nobody is removed.
+   */
+  await sleep(ttl / 2);
+  t.is((await request.get("/views")).body, 1);
+  t.is((await request1.post("/views")).body, 1);
+  t.is((await request2.get("/views")).body, 1);
+  t.is((await request4.get("/views")).body, 1);
+  t.is((await request5.get("/views")).body, 1);
+  t.is((await repository.count()), 5);
 });
 
-test("reloads, handling error", async (t) => {
+test("touches", async (t) => {
+  const { request, ttl }: Test = t.context;
+
+  t.is((await request.post("/views")).body, 1);
+
+  // Manage to touch before ttl expires.
+  await sleep(ttl / 2);
+  t.is((await request.get("/views")).body, 1);
+
+  // Again.
+  await sleep(ttl / 2);
+  t.is((await request.get("/views")).body, 1);
+
+  // Finally let session expire.
+  await sleep(ttl);
+  t.is((await request.get("/views")).body, 0);
+});
+
+test("touches, handling error", async (t) => {
   const ctx: Test = t.context;
 
   t.is((await ctx.request.post("/views")).body, 1);
@@ -53,24 +129,6 @@ test("reloads, handling error", async (t) => {
   await ctx.componentWillUnmount();
 
   await ctx.request.get("/views").expect(/database.*closed/i);
-});
-
-test("sets, touching and expiring", async (t) => {
-  const { request, ttl }: Test = t.context;
-
-  t.is((await request.post("/views")).body, 1);
-
-  // Manage to touch before ttl expires.
-  await new Promise((resolve) => setTimeout(resolve, ttl / 2 * 1e3));
-  t.is((await request.post("/views")).body, 2);
-
-  // Again.
-  await new Promise((resolve) => setTimeout(resolve, ttl / 2 * 1e3));
-  t.is((await request.post("/views")).body, 3);
-
-  // Finally let session expire.
-  await new Promise((resolve) => setTimeout(resolve, ttl * 1e3));
-  t.is((await request.post("/views")).body, 1);
 });
 
 test.afterEach(async (t) => {
@@ -93,7 +151,11 @@ class Session implements ISession {
 }
 
 class Test {
-  public request!: Supertest.SuperTest<Supertest.Test>;
+  public express = Express();
+
+  public request = Supertest.agent(this.express);
+
+  public repository!: Repository<Session>;
 
   public ttl = 1;
 
@@ -107,44 +169,41 @@ class Test {
       type: "sqlite",
     });
 
-    const repository = this.connection.getRepository(Session);
+    this.repository = this.connection.getRepository(Session);
 
-    const express = Express().use(
+    this.express.use(
       ExpressSession({
         resave: false,
         saveUninitialized: false,
         secret: Math.random().toString(),
-        store: new TypeormStore({ ttl: this.ttl }).connect(repository),
+        store: new TypeormStore({
+          cleanupLimit: 1,
+          ttl: this.ttl,
+        }).connect(this.repository),
       }),
     );
 
-    express.delete("/views", (req, res) => {
+    this.express.delete("/views", (req, res) => {
       const session = nullthrows(req.session);
 
       session.destroy((error) =>
-        res.status(error ? 500 : 200).json(error || session.views || 0),
+        res.status(error ? 500 : 200).json(error || null),
       );
     });
 
-    express.get("/views", (req, res) => {
+    this.express.get("/views", (req, res) => {
       const session = nullthrows(req.session);
 
-      session.reload((error) =>
-        res.status(error ? 500 : 200).json(error || session.views),
-      );
+      res.json(session.views || 0);
     });
 
-    express.post("/views", (req, res) => {
+    this.express.post("/views", (req, res) => {
       const session = nullthrows(req.session);
 
       session.views = (session.views || 0) + 1;
 
-      session.save((error) =>
-        res.status(error ? 500 : 200).json(error || session.views),
-      );
+      res.json(session.views);
     });
-
-    this.request = Supertest.agent(express);
   }
 
   public async componentWillUnmount() {
@@ -154,4 +213,8 @@ class Test {
       this.connection = undefined;
     }
   }
+}
+
+function sleep(timeout: number) {
+  return new Promise((resolve) => setTimeout(resolve, timeout * 1e3));
 }

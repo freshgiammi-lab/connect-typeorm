@@ -46,17 +46,25 @@ import { Session } from "../../domain/Session/Session";
 export class Api {
   public sessionRepository = Db.connection.getRepository(Session);
 
-  public express = Express()
-    .use(ExpressSession({
-      store: new TypeormStore({ ttl: 86400 }).connect(this.sessionRepository),
-      secret: "keyboard cat",
-    }));
+  public express = Express().use(
+    ExpressSession({
+      resave: false,
+      saveUninitialized: false,
+      store: new TypeormStore({
+        cleanupLimit: 2,
+        ttl: 86400
+      }).connect(this.sessionRepository),
+      secret: "keyboard cat"
+    })
+  );
 }
 ```
 
 ## Options
 
 Constructor receives an object. Following properties may be included:
+
+- `cleanupLimit` For every new session, remove this many expired ones. Defaults to 0, in case you need to analyze sessions retrospectively.
 
 -	`ttl` Session time to live (expiration) in seconds. Defaults to session.maxAge (if set), or one day. This may also be set to a function of the form `(store, sess, sessionID) => number`.
 

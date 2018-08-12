@@ -19,6 +19,8 @@ const oneDay = 86400;
 export type Ttl = number | ((store: TypeormStore, sess: any, sid?: string) => number);
 
 export class TypeormStore extends Store {
+  private cleanupLimit: number | undefined;
+
   private debug = Debug("connect:typeorm");
 
   private repository!: Repository<ISession>;
@@ -28,9 +30,10 @@ export class TypeormStore extends Store {
   /**
    * Initializes TypeormStore with the given `options`.
    */
-  constructor(options: Partial<SessionOptions & { ttl: Ttl }> = {}) {
+  constructor(options: Partial<SessionOptions & { cleanupLimit: number, ttl: Ttl }> = {}) {
     super(options);
 
+    this.cleanupLimit = options.cleanupLimit;
     this.ttl = options.ttl;
   }
 
@@ -83,11 +86,24 @@ export class TypeormStore extends Store {
     args.push("EX", ttl.toString());
     this.debug('SET "%s" %s ttl:%s', sid, json, ttl);
 
-    this.repository.save({
-      expiredAt: Date.now() + ttl * 1000,
-      id: sid,
-      json,
-    })
+    (this.cleanupLimit
+      ? this.repository
+        .createQueryBuilder("session")
+        .delete()
+        .where(`session.id IN (${
+          this.repository.createQueryBuilder("_")
+          .select("_.id")
+          .where("_.expiredAt <= :expiredAt")
+          .limit(this.cleanupLimit)
+          .getQuery()})`)
+        .setParameters({ expiredAt: Date.now() })
+        .execute()
+      : Promise.resolve())
+      .then(() => this.repository.save({
+        expiredAt: Date.now() + ttl * 1000,
+        id: sid,
+        json,
+      }))
       .then(() => {
         this.debug("SET complete");
 
