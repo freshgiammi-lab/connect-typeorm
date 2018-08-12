@@ -3,8 +3,7 @@
 bin/app/
 coverage/
 src/
-src/app/
-src/app/*/*.test.*
+out/app/*/*.test.*
 out/updateReadme*
 .gitattributes
 .gitignore
