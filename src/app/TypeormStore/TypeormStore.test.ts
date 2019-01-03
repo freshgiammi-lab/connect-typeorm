@@ -27,7 +27,7 @@ test.beforeEach(async (t) => {
 });
 
 test("destroys", async (t) => {
-  const { request }: Test = t.context;
+  const { request } = t.context as Test;
 
   t.is((await request.post("/views")).body, 1);
   t.is((await request.post("/views")).body, 2);
@@ -39,7 +39,7 @@ test("destroys", async (t) => {
 });
 
 test("sets, cleaning up expired", async (t) => {
-  const { express, repository, request, ttl }: Test = t.context;
+  const { express, repository, request, ttl } = t.context as Test;
 
   const request1 = Supertest.agent(express);
   const request2 = Supertest.agent(express);
@@ -104,7 +104,7 @@ test("sets, cleaning up expired", async (t) => {
 });
 
 test("touches", async (t) => {
-  const { request, ttl }: Test = t.context;
+  const { request, ttl } = t.context as Test;
 
   t.is((await request.post("/views")).body, 1);
 
@@ -122,7 +122,7 @@ test("touches", async (t) => {
 });
 
 test("touches, handling error", async (t) => {
-  const ctx: Test = t.context;
+  const ctx = t.context as Test;
 
   t.is((await ctx.request.post("/views")).body, 1);
 
@@ -132,7 +132,7 @@ test("touches, handling error", async (t) => {
 });
 
 test.afterEach(async (t) => {
-  const ctx: Test = t.context;
+  const ctx = t.context as Test;
 
   await ctx.componentWillUnmount();
 });
