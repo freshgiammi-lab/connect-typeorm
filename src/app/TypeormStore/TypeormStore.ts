@@ -99,11 +99,11 @@ export class TypeormStore extends Store {
         .setParameters({ expiredAt: Date.now() })
         .execute()
       : Promise.resolve())
-      .then(() => this.repository.save({
+      .then(() => this.saveSession({
         expiredAt: Date.now() + ttl * 1000,
         id: sid,
         json,
-      }))
+      }, sess))
       .then(() => {
         this.debug("SET complete");
 
@@ -192,6 +192,12 @@ export class TypeormStore extends Store {
       });
   }
 
+  protected saveSession(session: ISession, sessionData: any): Promise<ISession> {
+    // ignore TS6133 'sessionData' is declared but never read
+    sessionData = sessionData;
+    return this.repository.save(session);
+  }
+
   private createQueryBuilder() {
     return this.repository.createQueryBuilder("session")
       .where("session.expiredAt > :expiredAt", { expiredAt: Date.now() });
@@ -211,4 +217,5 @@ export class TypeormStore extends Store {
     this.debug("Typeorm returned err", er);
     this.emit("disconnect", er);
   }
+
 }
