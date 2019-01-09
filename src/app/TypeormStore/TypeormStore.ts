@@ -192,7 +192,7 @@ export class TypeormStore extends Store {
       });
   }
 
-  protected saveSession(session: ISession, sessionData: any) {
+  protected saveSession(session: ISession, sessionData: any): Promise<ISession> {
     // ignore TS6133 'sessionData' is declared but never read
     sessionData = sessionData;
     return this.repository.save(session);
