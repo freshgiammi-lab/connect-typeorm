@@ -52,6 +52,7 @@ export class Api {
       saveUninitialized: false,
       store: new TypeormStore({
         cleanupLimit: 2,
+        limitSubquery: false, // If using MariaDB.
         ttl: 86400
       }).connect(this.sessionRepository),
       secret: "keyboard cat"
@@ -65,6 +66,8 @@ export class Api {
 Constructor receives an object. Following properties may be included:
 
 - `cleanupLimit` For every new session, remove this many expired ones. Defaults to 0, in case you need to analyze sessions retrospectively.
+
+- `limitSubquery` Select and delete expired sessions in one query. Defaults to true, you can set false to make two queries, in case you want cleanupLimit but your MariaDB version doesn't support limit in a subquery.
 
 -	`ttl` Session time to live (expiration) in seconds. Defaults to session.maxAge (if set), or one day. This may also be set to a function of the form `(store, sess, sessionID) => number`.
 

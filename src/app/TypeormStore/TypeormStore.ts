@@ -16,24 +16,34 @@ import { ISession } from "../../domain/Session/ISession";
  */
 const oneDay = 86400;
 
-export type Ttl = number | ((store: TypeormStore, sess: any, sid?: string) => number);
+export type Ttl =
+  | number
+  | ((store: TypeormStore, sess: any, sid?: string) => number);
 
 export class TypeormStore extends Store {
   private cleanupLimit: number | undefined;
-
   private debug = Debug("connect:typeorm");
-
+  private limitSubquery = true;
   private repository!: Repository<ISession>;
-
   private ttl: Ttl | undefined;
 
   /**
    * Initializes TypeormStore with the given `options`.
    */
-  constructor(options: Partial<SessionOptions & { cleanupLimit: number, ttl: Ttl }> = {}) {
+  constructor(
+    options: Partial<
+      SessionOptions & {
+        cleanupLimit: number;
+        limitSubquery: boolean;
+        ttl: Ttl;
+      }
+    > = {},
+  ) {
     super(options);
-
     this.cleanupLimit = options.cleanupLimit;
+    if (options.limitSubquery !== undefined) {
+      this.limitSubquery = options.limitSubquery;
+    }
     this.ttl = options.ttl;
   }
 
@@ -87,23 +97,33 @@ export class TypeormStore extends Store {
     this.debug('SET "%s" %s ttl:%s', sid, json, ttl);
 
     (this.cleanupLimit
-      ? this.repository
-        .createQueryBuilder("session")
-        .delete()
-        .where(`session.id IN (${
-          this.repository.createQueryBuilder("_")
-          .select("_.id")
-          .where("_.expiredAt <= :expiredAt")
-          .limit(this.cleanupLimit)
-          .getQuery()})`)
-        .setParameters({ expiredAt: Date.now() })
-        .execute()
-      : Promise.resolve())
-      .then(() => this.repository.save({
-        expiredAt: Date.now() + ttl * 1000,
-        id: sid,
-        json,
-      }))
+      ? (() => {
+          const $ = this.repository
+            .createQueryBuilder("_")
+            .select("_.id")
+            .where(`_.expiredAt <= ${Date.now()}`)
+            .limit(this.cleanupLimit);
+          return this.limitSubquery
+            ? Promise.resolve($.getQuery())
+            : $.getMany().then(
+                (xs) => JSON.stringify(xs.map((x) => x.id)).slice(1, -1) || "NULL",
+              );
+        })().then((ids) =>
+          this.repository
+            .createQueryBuilder("session")
+            .delete()
+            .where(`session.id IN (${ids})`)
+            .execute(),
+        )
+      : Promise.resolve()
+    )
+      .then(() =>
+        this.repository.save({
+          expiredAt: Date.now() + ttl * 1000,
+          id: sid,
+          json,
+        }),
+      )
       .then(() => {
         this.debug("SET complete");
 

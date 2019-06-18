@@ -12,17 +12,17 @@
   "license": "MIT",
   "devDependencies": {
     "@types/supertest": "^2.0.5",
-    "ava": "^1.0.1",
+    "ava": "^2.1.0",
     "express": "^4.16.3",
-    "nullthrows": "^1.0.2",
-    "nyc": "^13.1.0",
+    "nullthrows": "^1.1.1",
+    "nyc": "^14.1.1",
     "pre-commit": "^1.2.2",
-    "sqlite3": "^4.0.2",
+    "sqlite3": "^4.0.9",
     "supertest": "^3.1.0",
     "test-all-versions": "^4.1.0",
     "tslint": "^5.8.0",
     "typeorm": "^0.1.4",
-    "typescript": "^3.2.2"
+    "typescript": "^3.5.2"
   },
   "dependencies": {
     "@types/debug": "0.0.31",

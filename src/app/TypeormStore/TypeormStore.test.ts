@@ -157,7 +157,7 @@ class Test {
 
   public repository!: Repository<Session>;
 
-  public ttl = 1;
+  public ttl = 2;
 
   private connection: Connection | undefined;
 
@@ -178,6 +178,7 @@ class Test {
         secret: Math.random().toString(),
         store: new TypeormStore({
           cleanupLimit: 1,
+          limitSubquery: false,
           ttl: this.ttl,
         }).connect(this.repository),
       }),
