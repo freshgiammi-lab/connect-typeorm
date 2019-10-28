@@ -1,7 +1,7 @@
 {
   "name": "connect-typeorm",
   "description": "A TypeORM-based session store",
-  "version": "1.1.1",
+  "version": "1.1.2",
   "main": "out",
   "typings": "out",
   "repository": "https://github.com/makepost/connect-typeorm",
