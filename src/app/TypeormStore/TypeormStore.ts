@@ -60,7 +60,7 @@ export class TypeormStore extends Store {
     this.debug('GET "%s"', sid);
 
     this.createQueryBuilder()
-      .andWhere("id = :id", { id: sid })
+      .andWhere("session.id = :id", { id: sid })
       .getOne()
       .then((session) => {
         if (!session) { return fn(); }
@@ -99,9 +99,9 @@ export class TypeormStore extends Store {
     (this.cleanupLimit
       ? (() => {
           const $ = this.repository
-            .createQueryBuilder("_")
-            .select("_.id")
-            .where(`_.expiredAt <= ${Date.now()}`)
+            .createQueryBuilder("session")
+            .select("session.id")
+            .where(`session.expiredAt <= ${Date.now()}`)
             .limit(this.cleanupLimit);
           return this.limitSubquery
             ? Promise.resolve($.getQuery())
@@ -110,9 +110,9 @@ export class TypeormStore extends Store {
               );
         })().then((ids) =>
           this.repository
-            .createQueryBuilder("session")
+            .createQueryBuilder()
             .delete()
-            .where(`session.id IN (${ids})`)
+            .where(`id IN (${ids})`)
             .execute(),
         )
       : Promise.resolve()
