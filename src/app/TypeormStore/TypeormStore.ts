@@ -105,8 +105,18 @@ export class TypeormStore extends Store {
             .limit(this.cleanupLimit);
           return this.limitSubquery
             ? Promise.resolve($.getQuery())
-            : $.getMany().then(
-                (xs) => JSON.stringify(xs.map((x) => x.id)).slice(1, -1) || "NULL",
+            : $.getMany().then((xs) =>
+                xs.length
+                  ? xs
+                      .map((x) =>
+                        typeof x.id === "string"
+                          ? `'${x.id
+                              .replace(/\\/g, "\\\\")
+                              .replace(/'/g, "\\'")}'`
+                          : `${x.id}`,
+                      )
+                      .join(", ")
+                  : "NULL",
               );
         })().then((ids) =>
           this.repository
