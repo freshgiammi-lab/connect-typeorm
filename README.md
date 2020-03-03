@@ -17,12 +17,10 @@ Implement the `Session` entity:
 
 import { ISession } from "connect-typeorm";
 import { Column, Entity, Index, PrimaryColumn } from "typeorm";
-import { Bigint } from "typeorm-static";
-
 @Entity()
 export class Session implements ISession {
   @Index()
-  @Column("bigint", { transformer: Bigint })
+  @Column("bigint")
   public expiredAt = Date.now();
 
   @PrimaryColumn("varchar", { length: 255 })
@@ -60,6 +58,14 @@ export class Api {
   );
 }
 ```
+
+```typescript
+TypeORM uses `{ "bigNumberStrings": true }` option by default for node-mysql, 
+you can use a Transformer to fix this issue:
+```typescript
+import { Bigint } from "typeorm-static";
+@Column("bigint", { transformer: Bigint })
+````
 
 ## Options
 
