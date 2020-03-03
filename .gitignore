@@ -63,3 +63,6 @@ yarn.lock
 
 # TypeScript output
 out/
+
+# VSCode
+.vscode
