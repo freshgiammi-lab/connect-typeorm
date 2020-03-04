@@ -59,8 +59,7 @@ export class Api {
 }
 ```
 
-```typescript
-TypeORM uses `{ "bigNumberStrings": true }` option by default for node-mysql, 
+TypeORM uses `{ "bigNumberStrings": true }` option by default for node-mysql,
 you can use a Transformer to fix this issue:
 ```typescript
 import { Bigint } from "typeorm-static";
