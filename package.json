@@ -22,7 +22,7 @@
     "test-all-versions": "^4.1.0",
     "tslint": "^5.8.0",
     "typeorm": "^0.1.4",
-    "typescript": "^3.5.2"
+    "typescript": "^3.8.3"
   },
   "dependencies": {
     "@types/debug": "0.0.31",
