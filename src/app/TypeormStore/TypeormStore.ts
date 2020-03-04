@@ -8,7 +8,7 @@
 
 import * as Debug from "debug";
 import { SessionOptions, Store } from "express-session";
-import { Repository } from "typeorm";
+import { Repository, SelectQueryBuilder } from "typeorm";
 import { ISession } from "../../domain/Session/ISession";
 
 /**
@@ -56,7 +56,7 @@ export class TypeormStore extends Store {
   /**
    * Attempts to fetch session by the given `sid`.
    */
-  public get = (sid: string, fn: (error?: any, result?: any) => void) => {
+  public get = (sid: string, fn: (error?: any, result?: any) => void): void => {
     this.debug('GET "%s"', sid);
 
     this.createQueryBuilder()
@@ -80,7 +80,7 @@ export class TypeormStore extends Store {
   /**
    * Commits the given `sess` object associated with the given `sid`.
    */
-  public set = (sid: string, sess: any, fn?: (error?: any) => void) => {
+  public set = (sid: string, sess: any, fn?: (error?: any) => void): void => {
     const args = [sid];
     let json: string;
 
@@ -153,7 +153,7 @@ export class TypeormStore extends Store {
   /**
    * Destroys the session associated with the given `sid`.
    */
-  public destroy = (sid: string | string[], fn?: (error?: any) => void) => {
+  public destroy = (sid: string | string[], fn?: (error?: any) => void): void => {
     this.debug('DEL "%s"', sid);
 
     Promise.all((Array.isArray(sid) ? sid : [sid]).map((x) => this.repository.delete({ id: x })))
@@ -174,7 +174,7 @@ export class TypeormStore extends Store {
   /**
    * Refreshes the time-to-live for the session with the given `sid`.
    */
-  public touch = (sid: string, sess: any, fn?: (error?: any) => void) => {
+  public touch = (sid: string, sess: any, fn?: (error?: any) => void): void => {
     const ttl = this.getTTL(sess);
 
     this.debug('EXPIRE "%s" ttl:%s', sid, ttl);
@@ -202,7 +202,7 @@ export class TypeormStore extends Store {
   /**
    * Fetches all sessions.
    */
-  public all = (fn: (error: any, result: any) => void) => {
+  public all = (fn: (error: any, result: any) => void): void => {
     let result: any[] = [];
 
     this.createQueryBuilder()
@@ -222,12 +222,12 @@ export class TypeormStore extends Store {
       });
   }
 
-  private createQueryBuilder() {
+  private createQueryBuilder(): SelectQueryBuilder<ISession> {
     return this.repository.createQueryBuilder("session")
       .where("session.expiredAt > :expiredAt", { expiredAt: Date.now() });
   }
 
-  private getTTL(sess: any, sid?: string) {
+  private getTTL(sess: any, sid?: string): number {
     if (typeof this.ttl === "number") { return this.ttl; }
     if (typeof this.ttl === "function") { return this.ttl(this, sess, sid); }
 
@@ -237,7 +237,7 @@ export class TypeormStore extends Store {
       : oneDay);
   }
 
-  private handleError(er: Error) {
+  private handleError(er: Error): void {
     this.debug("Typeorm returned err", er);
     this.emit("disconnect", er);
   }
