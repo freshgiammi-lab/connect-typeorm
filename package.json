@@ -12,10 +12,10 @@
   "license": "MIT",
   "devDependencies": {
     "@types/supertest": "^2.0.5",
-    "ava": "^2.1.0",
+    "ava": "^3.5.0",
     "express": "^4.16.3",
     "nullthrows": "^1.1.1",
-    "nyc": "^14.1.1",
+    "nyc": "^15.0.0",
     "pre-commit": "^1.2.2",
     "sqlite3": "^4.0.9",
     "supertest": "^3.1.0",
