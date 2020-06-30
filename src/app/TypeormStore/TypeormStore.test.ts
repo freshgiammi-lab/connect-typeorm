@@ -131,6 +131,19 @@ test("touches, handling error", async (t) => {
   await ctx.request.get("/views").expect(/database.*closed/i);
 });
 
+test("allows database to fail and recover", async (t) => {
+  const ctx = t.context as Test;
+
+  // Disconnect from the DB, make the repository raise an error
+  await ctx.disconnect();
+  await ctx.request.post("/views");
+
+  // Reconnect to the DB, and make sure we can log in again
+  await ctx.connect();
+  await ctx.request.post("/views");
+  t.is((await ctx.request.get("/views")).body, 1);
+});
+
 test.afterEach(async (t) => {
   const ctx = t.context as Test;
 
@@ -213,6 +226,14 @@ class Test {
 
       this.connection = undefined;
     }
+  }
+
+  public async disconnect() {
+    return this.connection?.close();
+  }
+
+  public async connect() {
+    return this.connection?.connect();
   }
 }
 
