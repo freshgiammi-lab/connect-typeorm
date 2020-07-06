@@ -24,6 +24,7 @@ export class TypeormStore extends Store {
   private cleanupLimit: number | undefined;
   private debug = Debug("connect:typeorm");
   private limitSubquery = true;
+  private onError: ((s: TypeormStore, e: Error) => void) | undefined;
   private repository!: Repository<ISession>;
   private ttl: Ttl | undefined;
 
@@ -35,6 +36,7 @@ export class TypeormStore extends Store {
       SessionOptions & {
         cleanupLimit: number;
         limitSubquery: boolean;
+        onError: (s: TypeormStore, e: Error) => void;
         ttl: Ttl;
       }
     > = {},
@@ -44,6 +46,7 @@ export class TypeormStore extends Store {
     if (options.limitSubquery !== undefined) {
       this.limitSubquery = options.limitSubquery;
     }
+    this.onError = options.onError;
     this.ttl = options.ttl;
   }
 
@@ -239,6 +242,10 @@ export class TypeormStore extends Store {
 
   private handleError(er: Error) {
     this.debug("Typeorm returned err", er);
-    this.emit("disconnect", er);
+    if (this.onError) {
+      this.onError(this, er);
+    } else {
+      this.emit("disconnect", er);
+    }
   }
 }
