@@ -76,6 +76,8 @@ Constructor receives an object. Following properties may be included:
 
 -	`ttl` Session time to live (expiration) in seconds. Defaults to session.maxAge (if set), or one day. This may also be set to a function of the form `(store, sess, sessionID) => number`.
 
+-	`onError` Error handler for database exception. It is a function of the form `(store: TypeormStore, error: Error) => void`. If not set, any database error will cause the TypeormStore to be marked as "disconnected", and stop reading/writing to the database, therefore not loading sessions and causing all requests to be considered unauthenticated.
+
 ## License
 
 MIT
