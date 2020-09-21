@@ -36,6 +36,7 @@ Pass repository to `TypeormStore`:
 ```typescript
 // src/app/Api/Api.ts
 
+import { TypeormStore } from "connect-typeorm";
 import * as Express from "express";
 import * as ExpressSession from "express-session";
 import { Db } from "typeorm-static";
