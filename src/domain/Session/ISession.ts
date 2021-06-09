@@ -3,5 +3,7 @@ export interface ISession {
 
   id: string;
 
+  destroyedAt?: Date;
+
   json: string;
 }

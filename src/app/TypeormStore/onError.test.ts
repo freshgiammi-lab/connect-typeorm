@@ -10,6 +10,7 @@ import {
   Column,
   Connection,
   createConnection,
+  DeleteDateColumn,
   Entity,
   Index,
   PrimaryColumn,
@@ -26,6 +27,9 @@ class Session implements ISession {
 
   @PrimaryColumn("varchar", { length: 255 })
   public id = "";
+
+  @DeleteDateColumn()
+  public destroyedAt?: Date;
 
   @Column("text")
   public json = "";
@@ -49,12 +53,12 @@ class Test {
   public route() {
     this.express.get("/views", (req, res) => {
       const session = nullthrows(req.session);
-      res.json(session.views || 0);
+      res.json((session as any).views || 0);
     });
     this.express.post("/views", (req, res) => {
       const session = nullthrows(req.session);
-      session.views = (session.views || 0) + 1;
-      res.json(session.views);
+      (session as any).views = ((session as any).views || 0) + 1;
+      res.json((session as any).views);
     });
   }
 }
