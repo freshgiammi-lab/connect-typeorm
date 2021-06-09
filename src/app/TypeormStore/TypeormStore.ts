@@ -41,7 +41,7 @@ export class TypeormStore extends Store {
       }
     > = {},
   ) {
-    super(options);
+    super(options as any);
     this.cleanupLimit = options.cleanupLimit;
     if (options.limitSubquery !== undefined) {
       this.limitSubquery = options.limitSubquery;
@@ -130,13 +130,25 @@ export class TypeormStore extends Store {
         )
       : Promise.resolve()
     )
-      .then(() =>
-        this.repository.save({
-          expiredAt: Date.now() + ttl * 1000,
-          id: sid,
-          json,
-        }),
-      )
+      // @ts-ignore
+      .then(async () => {
+        try {
+          await this.repository.findOneOrFail({ id: sid }, { withDeleted: true });
+          this.repository.update({
+            destroyedAt: null,
+            id: sid,
+          } as any, {
+            expiredAt: Date.now() + ttl * 1000,
+            json,
+          });
+        } catch (_) {
+          this.repository.insert({
+            expiredAt: Date.now() + ttl * 1000,
+            id: sid,
+            json,
+          });
+        }
+      })
       .then(() => {
         this.debug("SET complete");
 
@@ -144,7 +156,7 @@ export class TypeormStore extends Store {
           fn();
         }
       })
-      .catch((er) => {
+      .catch((er: any) => {
         if (fn) {
           fn(er);
         }
@@ -159,7 +171,7 @@ export class TypeormStore extends Store {
   public destroy = (sid: string | string[], fn?: (error?: any) => void) => {
     this.debug('DEL "%s"', sid);
 
-    Promise.all((Array.isArray(sid) ? sid : [sid]).map((x) => this.repository.delete({ id: x })))
+    Promise.all((Array.isArray(sid) ? sid : [sid]).map((x) => this.repository.softDelete({ id: x })))
       .then(() => {
         if (fn) {
           fn();

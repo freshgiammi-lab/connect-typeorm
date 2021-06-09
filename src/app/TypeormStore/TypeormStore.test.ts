@@ -10,6 +10,7 @@ import {
   Column,
   Connection,
   createConnection,
+  DeleteDateColumn,
   Entity,
   Index,
   PrimaryColumn,
@@ -128,7 +129,32 @@ test("touches, handling error", async (t) => {
 
   await ctx.componentWillUnmount();
 
-  await ctx.request.get("/views").expect(/database.*closed/i);
+  await ctx.request.get("/views").expect(/database.*not\ established/i);
+});
+
+test("race condition", async (t) => {
+  const { request, repository, blockLogout, unblockReq1 } = t.context as Test;
+
+  t.is((await request.post("/views")).body, 1);
+  t.is((await request.post("/views")).body, 2);
+
+  // hold logout until triggered by req to /race
+  blockLogout.then(async () => {
+    await request.delete("/views");
+    // let /race continue
+    unblockReq1();
+  });
+  // call to /race returns as expected as logout happens in between
+  // because session.views was 2, race increments and returns 3
+  t.is((await request.post("/race")).body, 3);
+
+  // the record in the db should be deleted and should NOT be updated
+  // i.e. views should still be at 2, not re-saved to 3
+  const records = await repository.find({ withDeleted: true });
+  t.is(JSON.parse(records[0].json).views, 2);
+
+  // session was deleted, so a new call results in a new session
+  t.is((await request.post("/views")).body, 1);
 });
 
 test.afterEach(async (t) => {
@@ -146,6 +172,9 @@ class Session implements ISession {
   @PrimaryColumn("varchar", { length: 255 })
   public id = "";
 
+  @DeleteDateColumn()
+  public destroyedAt?: Date;
+
   @Column("text")
   public json = "";
 }
@@ -159,14 +188,27 @@ class Test {
 
   public ttl = 2;
 
+  public unblockReq1: any = null;
+  public unblockLogout: any = null;
+  public blockReq1: any = null;
+  public blockLogout: any = null;
+
   private connection: Connection | undefined;
 
   public async componentDidMount() {
     this.connection = await createConnection({
       database: ":memory:",
       entities: [Session],
+      // logging: ["query", "error"],
       synchronize: true,
       type: "sqlite",
+    });
+
+    this.blockReq1 = new Promise((resolve, _) => {
+      this.unblockReq1 = resolve;
+    });
+    this.blockLogout = new Promise((resolve, _) => {
+      this.unblockLogout = resolve;
     });
 
     this.repository = this.connection.getRepository(Session);
@@ -195,15 +237,26 @@ class Test {
     this.express.get("/views", (req, res) => {
       const session = nullthrows(req.session);
 
-      res.json(session.views || 0);
+      res.json((session as any).views || 0);
     });
 
     this.express.post("/views", (req, res) => {
       const session = nullthrows(req.session);
 
-      session.views = (session.views || 0) + 1;
+      (session as any).views = ((session as any).views || 0) + 1;
 
-      res.json(session.views);
+      res.json((session as any).views);
+    });
+
+    this.express.post("/race", async (req, res) => {
+      const session = nullthrows(req.session);
+
+      (session as any).views = ((session as any).views || 0) + 1;
+
+      this.unblockLogout();
+      this.blockReq1.then(() => {
+        return res.json((session as any).views);
+      });
     });
   }
 
