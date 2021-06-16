@@ -103,6 +103,7 @@ export class TypeormStore extends Store {
       ? (() => {
           const $ = this.repository
             .createQueryBuilder("session")
+            .withDeleted()
             .select("session.id")
             .where(`session.expiredAt <= ${Date.now()}`)
             .limit(this.cleanupLimit);
