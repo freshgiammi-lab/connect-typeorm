@@ -157,6 +157,30 @@ test("race condition", async (t) => {
   t.is((await request.post("/views")).body, 1);
 });
 
+test("cleanup after session destroy", async (t) => {
+  const { request, repository, ttl, express } = t.context as Test;
+  const request1 = Supertest.agent(express);
+  t.is((await request.post("/views")).body, 1);
+
+  // precondition; there is 1 session in the repository
+  t.is((await repository.count({ withDeleted: true })), 1);
+
+  // explicit logout
+  await request.delete("/views");
+
+  // another session starts before the original expires
+  await sleep(ttl / 2);
+  t.is((await request1.post("/views")).body, 1);
+  t.is((await repository.count({ withDeleted: true })), 2);
+
+  // allow the original session to reach natural expiry
+  await sleep(ttl / 2);
+  t.is((await request1.post("/views")).body, 2);
+
+  // verify original record was removed with cleanup
+  t.is((await repository.count({ withDeleted: true })), 1);
+});
+
 test.afterEach(async (t) => {
   const ctx = t.context as Test;
 
