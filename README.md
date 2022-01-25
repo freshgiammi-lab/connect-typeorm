@@ -2,32 +2,41 @@
 
 A TypeORM-based session store.
 
-## Usage
+## Setup & Usage
 
 Configure TypeORM with back end of your choice:
 
+### Yarn
 ```bash
-yarn add @types/express-session connect-typeorm express-session typeorm sqlite3
+yarn add connect-typeorm express-session typeorm sqlite3
+yarn add -D @types/express-session 
 ```
 
-Implement the `Session` entity:
+### NPM
+```bash
+npm install connect-typeorm express-session typeorm sqlite3
+npm install -D @types/express-session 
+```
+
+## Implement the `Session` entity:
 
 ```typescript
 // src/domain/Session/Session.ts
 
 import { ISession } from "connect-typeorm";
 import { Column, Entity, Index, PrimaryColumn } from "typeorm";
+
 @Entity()
 export class Session implements ISession {
-  @Index()
-  @Column("bigint")
-  public expiredAt = Date.now();
+    @Index()
+    @Column("bigint")
+    public expiredAt = Date.now();
 
-  @PrimaryColumn("varchar", { length: 255 })
-  public id = "";
+    @PrimaryColumn("varchar", { length: 255 })
+    public id = "";
 
-  @Column("text")
-  public json = "";
+    @Column("text")
+    public json = "";
 }
 ```
 
@@ -37,33 +46,35 @@ Pass repository to `TypeormStore`:
 // src/app/Api/Api.ts
 
 import { TypeormStore } from "connect-typeorm";
+import { getRepository } from "typeorm";
 import * as Express from "express";
 import * as ExpressSession from "express-session";
-import { Db } from "typeorm-static";
+
 import { Session } from "../../domain/Session/Session";
 
 export class Api {
-  public sessionRepository = Db.connection.getRepository(Session);
+    public sessionRepository = getRepository(Session);
 
-  public express = Express().use(
-    ExpressSession({
-      resave: false,
-      saveUninitialized: false,
-      store: new TypeormStore({
-        cleanupLimit: 2,
-        limitSubquery: false, // If using MariaDB.
-        ttl: 86400
-      }).connect(this.sessionRepository),
-      secret: "keyboard cat"
-    })
-  );
+    public express = Express().use(
+        ExpressSession({
+            resave: false,
+            saveUninitialized: false,
+            store: new TypeormStore({
+                cleanupLimit: 2,
+                limitSubquery: false, // If using MariaDB.
+                ttl: 86400
+            }).connect(this.sessionRepository),
+            secret: "keyboard cat"
+        })
+    );
 }
 ```
 
-TypeORM uses `{ "bigNumberStrings": true }` option by default for node-mysql,
+TypeORM uses `{ "bigNumberStrings": true }` option by default for node-mysql,
 you can use a Transformer to fix this issue:
 ```typescript
 import { Bigint } from "typeorm-static";
+
 @Column("bigint", { transformer: Bigint })
 ````
 
