@@ -193,6 +193,11 @@ export class TypeormStore extends Store {
   public touch = (sid: string, sess: any, fn?: (error?: any) => void) => {
     const ttl = this.getTTL(sess);
 
+    if (sess?.cookie?.expires) {
+      this.debug('Skip updating session "%s" expiration', sid);
+      return;
+    }
+
     this.debug('EXPIRE "%s" ttl:%s', sid, ttl);
     this.repository
       .createQueryBuilder()
