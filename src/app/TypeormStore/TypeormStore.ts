@@ -8,7 +8,7 @@
 
 import * as Debug from "debug";
 import { SessionOptions, Store } from "express-session";
-import { Repository } from "typeorm";
+import { IsNull, Repository } from "typeorm";
 import { ISession } from "../../domain/Session/ISession";
 
 /**
@@ -134,16 +134,16 @@ export class TypeormStore extends Store {
       // @ts-ignore
       .then(async () => {
         try {
-          await this.repository.findOneOrFail({ id: sid }, { withDeleted: true });
-          this.repository.update({
-            destroyedAt: null,
+          await this.repository.findOneOrFail({where: { id: sid },  withDeleted: true});
+          await this.repository.update({
+            destroyedAt: IsNull(),
             id: sid,
           } as any, {
             expiredAt: Date.now() + ttl * 1000,
             json,
           });
         } catch (_) {
-          this.repository.insert({
+          await this.repository.insert({
             expiredAt: Date.now() + ttl * 1000,
             id: sid,
             json,
