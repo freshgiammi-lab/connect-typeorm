@@ -31,12 +31,12 @@
     "express-session": "^1.15.6"
   },
   "peerDependencies": {
-    "typeorm": "^0.3.4"
+    "typeorm": "^0.2.5 || ^0.3.4"
   },
   "scripts": {
     "format": "tsc && tslint --fix 'src/**/*.ts' && ava",
     "prepare": "tsc",
     "test": "tsc && nyc ava && nyc report --reporter=html && tslint 'src/**/*.ts'",
-    "test-extended": "tsc && tav typeorm '^0.1.4 || ^0.2.5' ava && npm i && npm test"
+    "test-extended": "tsc && tav typeorm '^0.2.5 || ^0.3.4' ava && npm i && npm test"
   }
 }
