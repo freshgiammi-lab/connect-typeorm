@@ -8,8 +8,8 @@ import nullthrows from "nullthrows";
 import * as Supertest from "supertest";
 import {
   Column,
-  Connection,
-  createConnection,
+  Connection, // Deprecated, available until v0.4.0
+  createConnection, // Deprecated, available until v0.4.0
   DeleteDateColumn,
   Entity,
   Index,
