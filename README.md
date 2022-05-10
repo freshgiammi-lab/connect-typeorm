@@ -82,7 +82,7 @@ import { Bigint } from "typeorm-static";
 
 Constructor receives an object. Following properties may be included:
 
-- `cleanupLimit` For every new session, remove this many expired ones. Defaults to 0, in case you need to analyze sessions retrospectively.
+- `cleanupLimit` For every new session, remove this many expired ones (does not distinguish between users, so User A logging in can delete User B expired sessions). Defaults to 0, in case you need to analyze sessions retrospectively.
 
 - `limitSubquery` Select and delete expired sessions in one query. Defaults to true, you can set false to make two queries, in case you want cleanupLimit but your MariaDB version doesn't support limit in a subquery.
 
