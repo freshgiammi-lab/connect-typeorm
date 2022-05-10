@@ -134,17 +134,19 @@ export class TypeormStore extends Store {
       // @ts-ignore
       .then(async () => {
         try {
+          // If a session with the given SID is already present (even deleted), renew it.
+          // Else, create a new row/session.
           await this.repository.findOneOrFail({where: { id: sid },  withDeleted: true});
           await this.repository.update({
             destroyedAt: IsNull(),
             id: sid,
           } as any, {
-            expiredAt: Date.now() + ttl * 1000,
+            expiredAt: Date.now() + (ttl * 1000),
             json,
           });
         } catch (_) {
           await this.repository.insert({
-            expiredAt: Date.now() + ttl * 1000,
+            expiredAt: Date.now() + (ttl * 1000),
             id: sid,
             json,
           });
@@ -172,7 +174,9 @@ export class TypeormStore extends Store {
   public destroy = (sid: string | string[], fn?: (error?: any) => void) => {
     this.debug('DEL "%s"', sid);
 
-    Promise.all((Array.isArray(sid) ? sid : [sid]).map((x) => this.repository.softDelete({ id: x })))
+    Promise.all((Array.isArray(sid) ? sid : [sid]).map((x) => {
+        this.repository.softDelete({ id: x });
+      }))
       .then(() => {
         if (fn) {
           fn();
@@ -195,7 +199,9 @@ export class TypeormStore extends Store {
 
     if (sess?.cookie?.expires) {
       this.debug('Skip updating session "%s" expiration', sid);
-      return;
+      if (fn) {
+        fn();
+      }
     }
 
     this.debug('EXPIRE "%s" ttl:%s', sid, ttl);
