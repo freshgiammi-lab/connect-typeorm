@@ -8,8 +8,7 @@ import nullthrows from "nullthrows";
 import * as Supertest from "supertest";
 import {
   Column,
-  Connection, // Deprecated, available until v0.4.0
-  createConnection, // Deprecated, available until v0.4.0
+  DataSource,
   DeleteDateColumn,
   Entity,
   Index,
@@ -196,11 +195,11 @@ class Session implements ISession {
   @PrimaryColumn("varchar", { length: 255 })
   public id = "";
 
-  @DeleteDateColumn()
-  public destroyedAt?: Date;
-
   @Column("text")
   public json = "";
+
+  @DeleteDateColumn()
+  public destroyedAt?: Date;
 }
 
 class Test {
@@ -217,16 +216,16 @@ class Test {
   public blockReq1: any = null;
   public blockLogout: any = null;
 
-  private connection: Connection | undefined;
+  private dataSource: DataSource | undefined;
 
   public async componentDidMount() {
-    this.connection = await createConnection({
+    this.dataSource = await new DataSource({
       database: ":memory:",
       entities: [Session],
       // logging: ["query", "error"],
       synchronize: true,
       type: "sqlite",
-    });
+    }).initialize();
 
     this.blockReq1 = new Promise((resolve, _) => {
       this.unblockReq1 = resolve;
@@ -235,7 +234,7 @@ class Test {
       this.unblockLogout = resolve;
     });
 
-    this.repository = this.connection.getRepository(Session);
+    this.repository = this.dataSource.getRepository(Session);
 
     this.express.use(
       ExpressSession({
@@ -285,10 +284,10 @@ class Test {
   }
 
   public async componentWillUnmount() {
-    if (this.connection) {
-      await this.connection.close();
+    if (this.dataSource) {
+      await this.dataSource.destroy();
 
-      this.connection = undefined;
+      this.dataSource = undefined;
     }
   }
 }
