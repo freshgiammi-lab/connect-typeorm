@@ -6,15 +6,9 @@ A TypeORM-based session store.
 
 Configure TypeORM with back end of your choice:
 
-### Yarn
-```bash
-yarn add connect-typeorm express-session typeorm sqlite3
-yarn add -D @types/express-session 
-```
-
 ### NPM
 ```bash
-npm install connect-typeorm express-session typeorm sqlite3
+npm install @freshgiammi/connect-typeorm express-session typeorm sqlite3
 npm install -D @types/express-session 
 ```
 
@@ -24,7 +18,7 @@ npm install -D @types/express-session
 // src/domain/Session/Session.ts
 
 import { ISession } from "connect-typeorm";
-import { Column, Entity, Index, PrimaryColumn } from "typeorm";
+import { Column, DeleteDateColumn, Entity, Index, PrimaryColumn } from "typeorm";
 
 @Entity()
 export class Session implements ISession {
@@ -37,6 +31,9 @@ export class Session implements ISession {
 
     @Column("text")
     public json = "";
+
+    @DeleteDateColumn()
+    public destroyedAt?: Date;
 }
 ```
 
