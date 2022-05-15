@@ -1,9 +1,9 @@
 export interface ISession {
-  expiredAt: number;
+  expiredAt: number
 
-  id: string;
-
-  destroyedAt?: Date;
-
-  json: string;
+  id: string
+  created_at: Date
+  updated_at: Date
+  destroyedAt?: Date
+  json: string
 }
