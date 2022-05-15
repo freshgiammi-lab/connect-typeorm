@@ -6,27 +6,27 @@
  * MIT Licensed
  */
 
-import * as Debug from "debug";
-import { SessionOptions, Store } from "express-session";
-import { Repository } from "typeorm";
-import { ISession } from "../../domain/Session/ISession";
-
+import * as Debug from 'debug'
+import { SessionOptions, Store } from 'express-session'
+import { Repository } from 'typeorm'
+import { ISession } from '../../domain/Session/ISession'
+import cron from 'node-cron'
 /**
  * One day in seconds.
  */
-const oneDay = 86400;
+const oneDay = 86400
 
 export type Ttl =
   | number
-  | ((store: TypeormStore, sess: any, sid?: string) => number);
+  | ((store: TypeormStore, sess: any, sid?: string) => number)
 
 export class TypeormStore extends Store {
-  private cleanupLimit: number | undefined;
-  private debug = Debug("connect:typeorm");
-  private limitSubquery = true;
-  private onError: ((s: TypeormStore, e: Error) => void) | undefined;
-  private repository!: Repository<ISession>;
-  private ttl: Ttl | undefined;
+  private cleanupLimit: number | undefined
+  private debug = Debug('connect:typeorm')
+  private limitSubquery = true
+  private onError: ((s: TypeormStore, e: Error) => void) | undefined
+  private repository!: Repository<ISession>
+  private ttl: Ttl | undefined
 
   /**
    * Initializes TypeormStore with the given `options`.
@@ -34,231 +34,257 @@ export class TypeormStore extends Store {
   constructor(
     options: Partial<
       SessionOptions & {
-        cleanupLimit: number;
-        limitSubquery: boolean;
-        onError: (s: TypeormStore, e: Error) => void;
-        ttl: Ttl;
+        cleanupLimit: number
+        limitSubquery: boolean
+        onError: (s: TypeormStore, e: Error) => void
+        ttl: Ttl
       }
-    > = {},
+    > = {}
   ) {
-    super(options as any);
-    this.cleanupLimit = options.cleanupLimit;
+    super(options as any)
+    this.cleanupLimit = options.cleanupLimit
     if (options.limitSubquery !== undefined) {
-      this.limitSubquery = options.limitSubquery;
+      this.limitSubquery = options.limitSubquery
     }
-    this.onError = options.onError;
-    this.ttl = options.ttl;
+    this.onError = options.onError
+    this.ttl = options.ttl
   }
 
   public connect(repository: Repository<ISession>) {
-    this.repository = repository;
-    this.emit("connect");
-    return this;
+    this.repository = repository
+    this.emit('connect')
+    return this
   }
 
+  public cleanSession(field: { cron: string; rollbackTime: number }) {
+    cron.schedule(field.cron, () => {
+      this.repository
+        .createQueryBuilder()
+        .delete()
+        .where('updated_at <= :date', {
+          date: new Date((new Date() as number | any) - field.rollbackTime),
+        })
+        .execute()
+    })
+    return this
+  }
   /**
    * Attempts to fetch session by the given `sid`.
    */
   public get = (sid: string, fn: (error?: any, result?: any) => void) => {
-    this.debug('GET "%s"', sid);
+    this.debug('GET "%s"', sid)
 
     this.createQueryBuilder()
-      .andWhere("session.id = :id", { id: sid })
+      .andWhere('session.id = :id', { id: sid })
       .getOne()
       .then((session) => {
-        if (!session) { return fn(); }
+        if (!session) {
+          return fn()
+        }
 
-        let result: any;
-        this.debug("GOT %s", session.json);
+        let result: any
+        this.debug('GOT %s', session.json)
 
-        result = JSON.parse(session.json);
-        fn(undefined, result);
+        result = JSON.parse(session.json)
+        fn(undefined, result)
       })
       .catch((er) => {
-        fn(er);
-        this.handleError(er);
-      });
+        fn(er)
+        this.handleError(er)
+      })
   }
 
   /**
    * Commits the given `sess` object associated with the given `sid`.
    */
   public set = (sid: string, sess: any, fn?: (error?: any) => void) => {
-    const args = [sid];
-    let json: string;
+    const args = [sid]
+    let json: string
 
     try {
-      json = JSON.stringify(sess);
+      json = JSON.stringify(sess)
     } catch (er) {
-      return fn ? fn(er) : undefined;
+      return fn ? fn(er) : undefined
     }
 
-    args.push(json);
+    args.push(json)
 
-    const ttl = this.getTTL(sess, sid);
-    args.push("EX", ttl.toString());
-    this.debug('SET "%s" %s ttl:%s', sid, json, ttl);
-
-    (this.cleanupLimit
+    const ttl = this.getTTL(sess, sid)
+    args.push('EX', ttl.toString())
+    this.debug('SET "%s" %s ttl:%s', sid, json, ttl)
+    ;(this.cleanupLimit
       ? (() => {
           const $ = this.repository
-            .createQueryBuilder("session")
+            .createQueryBuilder('session')
             .withDeleted()
-            .select("session.id")
+            .select('session.id')
             .where(`session.expiredAt <= ${Date.now()}`)
-            .limit(this.cleanupLimit);
+            .limit(this.cleanupLimit)
           return this.limitSubquery
             ? Promise.resolve($.getQuery())
             : $.getMany().then((xs) =>
                 xs.length
                   ? xs
                       .map((x) =>
-                        typeof x.id === "string"
+                        typeof x.id === 'string'
                           ? `'${x.id
-                              .replace(/\\/g, "\\\\")
+                              .replace(/\\/g, '\\\\')
                               .replace(/'/g, "\\'")}'`
-                          : `${x.id}`,
+                          : `${x.id}`
                       )
-                      .join(", ")
-                  : "NULL",
-              );
+                      .join(', ')
+                  : 'NULL'
+              )
         })().then((ids) =>
           this.repository
             .createQueryBuilder()
             .delete()
             .where(`id IN (${ids})`)
-            .execute(),
+            .execute()
         )
       : Promise.resolve()
     )
       // @ts-ignore
       .then(async () => {
         try {
-          await this.repository.findOneOrFail({ id: sid }, { withDeleted: true });
-          this.repository.update({
-            destroyedAt: null,
-            id: sid,
-          } as any, {
-            expiredAt: Date.now() + ttl * 1000,
-            json,
-          });
+          await this.repository.findOneOrFail(
+            { id: sid },
+            { withDeleted: true }
+          )
+          this.repository.update(
+            {
+              destroyedAt: null,
+              id: sid,
+            } as any,
+            {
+              expiredAt: Date.now() + ttl * 1000,
+              json,
+            }
+          )
         } catch (_) {
           this.repository.insert({
             expiredAt: Date.now() + ttl * 1000,
             id: sid,
             json,
-          });
+          })
         }
       })
       .then(() => {
-        this.debug("SET complete");
+        this.debug('SET complete')
 
         if (fn) {
-          fn();
+          fn()
         }
       })
       .catch((er: any) => {
         if (fn) {
-          fn(er);
+          fn(er)
         }
 
-        this.handleError(er);
-      });
+        this.handleError(er)
+      })
   }
 
   /**
    * Destroys the session associated with the given `sid`.
    */
   public destroy = (sid: string | string[], fn?: (error?: any) => void) => {
-    this.debug('DEL "%s"', sid);
+    this.debug('DEL "%s"', sid)
 
-    Promise.all((Array.isArray(sid) ? sid : [sid]).map((x) => this.repository.softDelete({ id: x })))
+    Promise.all(
+      (Array.isArray(sid) ? sid : [sid]).map((x) =>
+        this.repository.softDelete({ id: x })
+      )
+    )
       .then(() => {
         if (fn) {
-          fn();
+          fn()
         }
       })
       .catch((er) => {
         if (fn) {
-          fn(er);
+          fn(er)
         }
 
-        this.handleError(er);
-      });
+        this.handleError(er)
+      })
   }
 
   /**
    * Refreshes the time-to-live for the session with the given `sid`.
    */
   public touch = (sid: string, sess: any, fn?: (error?: any) => void) => {
-    const ttl = this.getTTL(sess);
+    const ttl = this.getTTL(sess)
 
-    this.debug('EXPIRE "%s" ttl:%s', sid, ttl);
+    this.debug('EXPIRE "%s" ttl:%s', sid, ttl)
     this.repository
       .createQueryBuilder()
       .update({ expiredAt: Date.now() + ttl * 1000 })
       .whereInIds([sid])
       .execute()
       .then(() => {
-        this.debug("EXPIRE complete");
+        this.debug('EXPIRE complete')
 
         if (fn) {
-          fn();
+          fn()
         }
       })
       .catch((er) => {
         if (fn) {
-          fn(er);
+          fn(er)
         }
 
-        this.handleError(er);
-      });
+        this.handleError(er)
+      })
   }
 
   /**
    * Fetches all sessions.
    */
   public all = (fn: (error: any, result: any) => void) => {
-    let result: any[] = [];
+    let result: any[] = []
 
     this.createQueryBuilder()
       .getMany()
       .then((sessions) => {
         result = sessions.map((session) => {
-          const sess = JSON.parse(session.json);
-          sess.id = session.id;
-          return sess;
-        });
+          const sess = JSON.parse(session.json)
+          sess.id = session.id
+          return sess
+        })
 
-        fn(undefined, result);
+        fn(undefined, result)
       })
       .catch((er) => {
-        fn(er, result);
-        this.handleError(er);
-      });
+        fn(er, result)
+        this.handleError(er)
+      })
   }
 
   private createQueryBuilder() {
-    return this.repository.createQueryBuilder("session")
-      .where("session.expiredAt > :expiredAt", { expiredAt: Date.now() });
+    return this.repository
+      .createQueryBuilder('session')
+      .where('session.expiredAt > :expiredAt', { expiredAt: Date.now() })
   }
 
   private getTTL(sess: any, sid?: string) {
-    if (typeof this.ttl === "number") { return this.ttl; }
-    if (typeof this.ttl === "function") { return this.ttl(this, sess, sid); }
+    if (typeof this.ttl === 'number') {
+      return this.ttl
+    }
+    if (typeof this.ttl === 'function') {
+      return this.ttl(this, sess, sid)
+    }
 
-    const maxAge = sess.cookie.maxAge;
-    return (typeof maxAge === "number"
-      ? Math.floor(maxAge / 1000)
-      : oneDay);
+    const maxAge = sess.cookie.maxAge
+    return typeof maxAge === 'number' ? Math.floor(maxAge / 1000) : oneDay
   }
 
   private handleError(er: Error) {
-    this.debug("Typeorm returned err", er);
+    this.debug('Typeorm returned err', er)
     if (this.onError) {
-      this.onError(this, er);
+      this.onError(this, er)
     } else {
-      this.emit("disconnect", er);
+      this.emit('disconnect', er)
     }
   }
 }
