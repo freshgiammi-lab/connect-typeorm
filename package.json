@@ -1,15 +1,16 @@
 {
-  "name": "@freshgiammi/connect-typeorm",
+  "name": "connect-typeorm",
   "description": "A TypeORM-based session store",
   "version": "2.0.0",
   "main": "out",
   "typings": "out",
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/freshgiammi/connect-typeorm.git"
+    "url": "git+https://github.com/freshgiammi-lab/connect-typeorm.git"
   },
   "author": "makepost",
   "contributors": [
+    "freshgiammi <rengucci.gianmarco@gmail.com>",
     "Nathan Phillip Brink <ohnobinki@ohnopublishing.net>"
   ],
   "license": "MIT",
@@ -43,9 +44,9 @@
     "test-extended": "tsc && tav typeorm '^0.3.0' ava && npm i && npm test"
   },
   "bugs": {
-    "url": "https://github.com/freshgiammi/connect-typeorm/issues"
+    "url": "https://github.com/freshgiammi-lab/connect-typeorm/issues"
   },
-  "homepage": "https://github.com/freshgiammi/connect-typeorm#readme",
+  "homepage": "https://github.com/freshgiammi-lab/connect-typeorm#readme",
   "keywords": [
     "typeorm",
     "postgres",

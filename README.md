@@ -8,7 +8,7 @@ Configure TypeORM with back end of your choice:
 
 ### NPM
 ```bash
-npm install @freshgiammi/connect-typeorm express-session typeorm sqlite3
+npm install connect-typeorm express-session typeorm sqlite3
 npm install -D @types/express-session 
 ```
 
