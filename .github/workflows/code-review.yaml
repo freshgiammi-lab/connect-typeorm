@@ -1,0 +1,83 @@
+name: Poor Man's Code Review
+on:
+  push:
+    branches:
+      - master
+      - dev
+  pull_request: {}
+
+jobs:
+  lint:
+    name: 🔎 Lint
+    runs-on: ubuntu-latest
+
+    strategy:
+      matrix:
+        node-version: [18.x]
+        # See supported Node.js release schedule at https://nodejs.org/en/about/releases/
+
+    steps:
+      - name: ⬇️ Checkout repo
+        uses: actions/checkout@v3
+
+      - name: ⬣ Setup node
+        uses: actions/setup-node@v3
+        with:
+          node-version: ${{ matrix.node-version }}
+          cache: 'npm'
+
+      - name: 📥 NPM install (w/ cache)
+        uses: bahmutov/npm-install@v1
+
+      - name: 🔎 Lint
+        run: npm run lint:strict
+
+  prettify:
+    name: 💅 Prettify
+    runs-on: ubuntu-latest
+
+    strategy:
+      matrix:
+        node-version: [18.x]
+        # See supported Node.js release schedule at https://nodejs.org/en/about/releases/
+
+    steps:
+      - name: ⬇️ Checkout repo
+        uses: actions/checkout@v3
+
+      - name: ⬣ Setup node
+        uses: actions/setup-node@v3
+        with:
+          node-version: ${{ matrix.node-version }}
+          cache: 'npm'
+
+      - name: 📥 NPM install (w/ cache)
+        uses: bahmutov/npm-install@v1
+
+      - name: 💅 Prettier Check
+        run: npm run prettify:check
+
+  test:
+    name: 🤖 Test
+    runs-on: ubuntu-latest
+
+    strategy:
+      matrix:
+        node-version: [18.x]
+        # See supported Node.js release schedule at https://nodejs.org/en/about/releases/
+
+    steps:
+      - name: ⬇️ Checkout repo
+        uses: actions/checkout@v3
+
+      - name: ⬣ Setup node
+        uses: actions/setup-node@v3
+        with:
+          node-version: ${{ matrix.node-version }}
+          cache: 'npm'
+
+      - name: 📥 NPM install (w/ cache)
+        uses: bahmutov/npm-install@v1
+
+      - name: 🤖 Test
+        run: npm run test
