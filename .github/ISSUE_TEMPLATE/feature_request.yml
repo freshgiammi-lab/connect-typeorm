@@ -1,0 +1,24 @@
+name: ✨Feature Request
+description: Request a new feature or enhancement
+labels: ['enhancement :sparkles: ']
+title: '[FEAT]: '
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for taking the time to fill out this feature request!
+        Please be sure to include as much details if possible, and make sure this request is not a duplicate!
+
+  - type: textarea
+    id: description
+    attributes:
+      label: Description
+      description: So, mind giving me a brief description of the feature or enhancement you would like to see?
+    validations:
+      required: true
+
+  - type: textarea
+    id: additional_information
+    attributes:
+      label: Additional Information
+      description: If you have anything else such as screenshots, mockups or anything else that could help implement this, feel free to add it here!
