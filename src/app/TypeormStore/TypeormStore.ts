@@ -6,23 +6,21 @@
  * MIT Licensed
  */
 
-import * as Debug from "debug";
-import { SessionOptions, Store } from "express-session";
-import { IsNull, Repository } from "typeorm";
-import { ISession } from "../../domain/Session/ISession";
+import * as Debug from 'debug';
+import { SessionOptions, Store } from 'express-session';
+import { IsNull, Repository } from 'typeorm';
+import { ISession } from '../../domain/Session/ISession';
 
 /**
  * One day in seconds.
  */
 const oneDay = 86400;
 
-export type Ttl =
-  | number
-  | ((store: TypeormStore, sess: any, sid?: string) => number);
+export type Ttl = number | ((store: TypeormStore, sess: any, sid?: string) => number);
 
 export class TypeormStore extends Store {
   private cleanupLimit: number | undefined;
-  private debug = Debug("connect:typeorm");
+  private debug = Debug('connect:typeorm');
   private limitSubquery = true;
   private onError: ((s: TypeormStore, e: Error) => void) | undefined;
   private repository!: Repository<ISession>;
@@ -39,7 +37,7 @@ export class TypeormStore extends Store {
         onError: (s: TypeormStore, e: Error) => void;
         ttl: Ttl;
       }
-    > = {},
+    > = {}
   ) {
     super(options as any);
     this.cleanupLimit = options.cleanupLimit;
@@ -52,7 +50,7 @@ export class TypeormStore extends Store {
 
   public connect(repository: Repository<ISession>) {
     this.repository = repository;
-    this.emit("connect");
+    this.emit('connect');
     return this;
   }
 
@@ -63,22 +61,23 @@ export class TypeormStore extends Store {
     this.debug('GET "%s"', sid);
 
     this.createQueryBuilder()
-      .andWhere("session.id = :id", { id: sid })
+      .andWhere('session.id = :id', { id: sid })
       .getOne()
       .then((session) => {
-        if (!session) { return fn(); }
+        if (!session) {
+          return fn();
+        }
 
-        let result: any;
-        this.debug("GOT %s", session.json);
+        this.debug('GOT %s', session.json);
 
-        result = JSON.parse(session.json);
+        const result = JSON.parse(session.json);
         fn(undefined, result);
       })
       .catch((er) => {
         fn(er);
         this.handleError(er);
       });
-  }
+  };
 
   /**
    * Commits the given `sess` object associated with the given `sid`.
@@ -96,15 +95,15 @@ export class TypeormStore extends Store {
     args.push(json);
 
     const ttl = this.getTTL(sess, sid);
-    args.push("EX", ttl.toString());
+    args.push('EX', ttl.toString());
     this.debug('SET "%s" %s ttl:%s', sid, json, ttl);
 
     (this.cleanupLimit
       ? (() => {
           const $ = this.repository
-            .createQueryBuilder("session")
+            .createQueryBuilder('session')
             .withDeleted()
-            .select("session.id")
+            .select('session.id')
             .where(`session.expiredAt <= ${Date.now()}`)
             .limit(this.cleanupLimit);
           return this.limitSubquery
@@ -113,47 +112,39 @@ export class TypeormStore extends Store {
                 xs.length
                   ? xs
                       .map((x) =>
-                        typeof x.id === "string"
-                          ? `'${x.id
-                              .replace(/\\/g, "\\\\")
-                              .replace(/'/g, "\\'")}'`
-                          : `${x.id}`,
+                        typeof x.id === 'string' ? `'${x.id.replace(/\\/g, '\\\\').replace(/'/g, "\\'")}'` : `${x.id}`
                       )
-                      .join(", ")
-                  : "NULL",
+                      .join(', ')
+                  : 'NULL'
               );
-        })().then((ids) =>
-          this.repository
-            .createQueryBuilder()
-            .delete()
-            .where(`id IN (${ids})`)
-            .execute(),
-        )
+        })().then((ids) => this.repository.createQueryBuilder().delete().where(`id IN (${ids})`).execute())
       : Promise.resolve()
     )
-      // @ts-ignore
       .then(async () => {
         try {
           // If a session with the given SID is already present (even deleted), renew it.
           // Else, create a new row/session.
-          await this.repository.findOneOrFail({where: { id: sid },  withDeleted: true});
-          await this.repository.update({
-            destroyedAt: IsNull(),
-            id: sid,
-          } as any, {
-            expiredAt: Date.now() + (ttl * 1000),
-            json,
-          });
+          await this.repository.findOneOrFail({ where: { id: sid }, withDeleted: true });
+          await this.repository.update(
+            {
+              destroyedAt: IsNull(),
+              id: sid,
+            } as any,
+            {
+              expiredAt: Date.now() + ttl * 1000,
+              json,
+            }
+          );
         } catch (_) {
           await this.repository.insert({
-            expiredAt: Date.now() + (ttl * 1000),
+            expiredAt: Date.now() + ttl * 1000,
             id: sid,
             json,
           });
         }
       })
       .then(() => {
-        this.debug("SET complete");
+        this.debug('SET complete');
 
         if (fn) {
           fn();
@@ -166,7 +157,7 @@ export class TypeormStore extends Store {
 
         this.handleError(er);
       });
-  }
+  };
 
   /**
    * Destroys the session associated with the given `sid`.
@@ -174,9 +165,11 @@ export class TypeormStore extends Store {
   public destroy = (sid: string | string[], fn?: (error?: any) => void) => {
     this.debug('DEL "%s"', sid);
 
-    Promise.all((Array.isArray(sid) ? sid : [sid]).map((x) => {
+    Promise.all(
+      (Array.isArray(sid) ? sid : [sid]).map((x) => {
         this.repository.softDelete({ id: x });
-      }))
+      })
+    )
       .then(() => {
         if (fn) {
           fn();
@@ -189,7 +182,7 @@ export class TypeormStore extends Store {
 
         this.handleError(er);
       });
-  }
+  };
 
   /**
    * Refreshes the time-to-live for the session with the given `sid`.
@@ -211,7 +204,7 @@ export class TypeormStore extends Store {
       .whereInIds([sid])
       .execute()
       .then(() => {
-        this.debug("EXPIRE complete");
+        this.debug('EXPIRE complete');
 
         if (fn) {
           fn();
@@ -224,7 +217,7 @@ export class TypeormStore extends Store {
 
         this.handleError(er);
       });
-  }
+  };
 
   /**
    * Fetches all sessions.
@@ -247,29 +240,32 @@ export class TypeormStore extends Store {
         fn(er, result);
         this.handleError(er);
       });
-  }
+  };
 
   private createQueryBuilder() {
-    return this.repository.createQueryBuilder("session")
-      .where("session.expiredAt > :expiredAt", { expiredAt: Date.now() });
+    return this.repository
+      .createQueryBuilder('session')
+      .where('session.expiredAt > :expiredAt', { expiredAt: Date.now() });
   }
 
   private getTTL(sess: any, sid?: string) {
-    if (typeof this.ttl === "number") { return this.ttl; }
-    if (typeof this.ttl === "function") { return this.ttl(this, sess, sid); }
+    if (typeof this.ttl === 'number') {
+      return this.ttl;
+    }
+    if (typeof this.ttl === 'function') {
+      return this.ttl(this, sess, sid);
+    }
 
     const maxAge = sess.cookie.maxAge;
-    return (typeof maxAge === "number"
-      ? Math.floor(maxAge / 1000)
-      : oneDay);
+    return typeof maxAge === 'number' ? Math.floor(maxAge / 1000) : oneDay;
   }
 
   private handleError(er: Error) {
-    this.debug("Typeorm returned err", er);
+    this.debug('Typeorm returned err', er);
     if (this.onError) {
       this.onError(this, er);
     } else {
-      this.emit("disconnect", er);
+      this.emit('disconnect', er);
     }
   }
 }

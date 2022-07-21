@@ -1,0 +1,13 @@
+{
+  "env": {
+    "browser": false,
+    "es2021": true,
+    "node": true
+  },
+  "plugins": ["@typescript-eslint", "simple-import-sort", "unused-imports", "prettier"],
+  "extends": ["eslint:recommended", "plugin:@typescript-eslint/recommended", "plugin:prettier/recommended"],
+  "rules": {
+    "max-len": ["error", { "code": 120, "ignoreComments": true, "ignoreUrls": true }], // This is '100' by default, but we can be a bit less restrictive.
+    "prettier/prettier": "error"
+  }
+}

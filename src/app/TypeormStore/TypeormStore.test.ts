@@ -1,22 +1,14 @@
 // tslint:disable:max-classes-per-file
 // tslint:disable:no-implicit-dependencies
 
-import test from "ava";
-import * as Express from "express";
-import * as ExpressSession from "express-session";
-import nullthrows from "nullthrows";
-import * as Supertest from "supertest";
-import {
-  Column,
-  DataSource,
-  DeleteDateColumn,
-  Entity,
-  Index,
-  PrimaryColumn,
-  Repository,
-} from "typeorm";
-import { ISession } from "../../domain/Session/ISession";
-import { TypeormStore } from "./TypeormStore";
+import test from 'ava';
+import * as Express from 'express';
+import * as ExpressSession from 'express-session';
+import nullthrows from 'nullthrows';
+import * as Supertest from 'supertest';
+import { Column, DataSource, DeleteDateColumn, Entity, Index, PrimaryColumn, Repository } from 'typeorm';
+import { ISession } from '../../domain/Session/ISession';
+import { TypeormStore } from './TypeormStore';
 
 test.beforeEach(async (t) => {
   const ctx = new Test();
@@ -26,19 +18,19 @@ test.beforeEach(async (t) => {
   t.context = ctx;
 });
 
-test("destroys", async (t) => {
+test('destroys', async (t) => {
   const { request } = t.context as Test;
 
-  t.is((await request.post("/views")).body, 1);
-  t.is((await request.post("/views")).body, 2);
-  t.is((await request.post("/views")).body, 3);
+  t.is((await request.post('/views')).body, 1);
+  t.is((await request.post('/views')).body, 2);
+  t.is((await request.post('/views')).body, 3);
 
-  await request.delete("/views");
+  await request.delete('/views');
 
-  t.is((await request.post("/views")).body, 1);
+  t.is((await request.post('/views')).body, 1);
 });
 
-test("sets, cleaning up expired", async (t) => {
+test('sets, cleaning up expired', async (t) => {
   const { express, repository, request, ttl } = t.context as Test;
 
   const request1 = Supertest.agent(express);
@@ -48,104 +40,104 @@ test("sets, cleaning up expired", async (t) => {
   const request5 = Supertest.agent(express);
 
   // Users 0 and 1 appear.
-  t.is((await request.post("/views")).body, 1);
-  t.is((await request1.post("/views")).body, 1);
-  t.is((await repository.count()), 2);
+  t.is((await request.post('/views')).body, 1);
+  t.is((await request1.post('/views')).body, 1);
+  t.is(await repository.count(), 2);
 
   /**
    * User 0 returns. 1 hasn't expired yet. 2 and 3 appear.
    */
   await sleep(ttl / 2);
-  t.is((await request.get("/views")).body, 1);
-  t.is((await request2.post("/views")).body, 1);
-  t.is((await request3.post("/views")).body, 1);
-  t.is((await repository.count()), 4);
+  t.is((await request.get('/views')).body, 1);
+  t.is((await request2.post('/views')).body, 1);
+  t.is((await request3.post('/views')).body, 1);
+  t.is(await repository.count(), 4);
 
   /**
    * Users 0 and 2 return. 1 expired, but remains because nobody new
    * appears. 3 hasn't expired yet.
    */
   await sleep(ttl / 2);
-  t.is((await request.get("/views")).body, 1);
-  t.is((await request2.get("/views")).body, 1);
-  t.is((await repository.count()), 4);
+  t.is((await request.get('/views')).body, 1);
+  t.is((await request2.get('/views')).body, 1);
+  t.is(await repository.count(), 4);
 
   /**
    * User 2 returns. 4 appears. Of the expired 1 and 3, somebody is
    * removed, and the other remains. 0 hasn't expired yet.
    */
   await sleep(ttl / 2);
-  t.is((await request2.get("/views")).body, 1);
-  t.is((await request4.post("/views")).body, 1);
-  t.is((await repository.count()), 4);
+  t.is((await request2.get('/views')).body, 1);
+  t.is((await request4.post('/views')).body, 1);
+  t.is(await repository.count(), 4);
 
   /**
    * Users 0, 2 and 4 return. 5 appears. Of the expired 1 and 3, the
    * remaining other is removed.
    */
-  t.is((await request.get("/views")).body, 1);
+  t.is((await request.get('/views')).body, 1);
   await sleep(ttl / 2);
-  t.is((await request.get("/views")).body, 1);
-  t.is((await request2.get("/views")).body, 1);
-  t.is((await request4.get("/views")).body, 1);
-  t.is((await request5.post("/views")).body, 1);
-  t.is((await repository.count()), 4);
+  t.is((await request.get('/views')).body, 1);
+  t.is((await request2.get('/views')).body, 1);
+  t.is((await request4.get('/views')).body, 1);
+  t.is((await request5.post('/views')).body, 1);
+  t.is(await repository.count(), 4);
 
   /**
    * Users 0, 2, 4 and 5 return. 1 appears. Nobody is removed.
    */
   await sleep(ttl / 2);
-  t.is((await request.get("/views")).body, 1);
-  t.is((await request1.post("/views")).body, 1);
-  t.is((await request2.get("/views")).body, 1);
-  t.is((await request4.get("/views")).body, 1);
-  t.is((await request5.get("/views")).body, 1);
-  t.is((await repository.count()), 5);
+  t.is((await request.get('/views')).body, 1);
+  t.is((await request1.post('/views')).body, 1);
+  t.is((await request2.get('/views')).body, 1);
+  t.is((await request4.get('/views')).body, 1);
+  t.is((await request5.get('/views')).body, 1);
+  t.is(await repository.count(), 5);
 });
 
-test("touches", async (t) => {
+test('touches', async (t) => {
   const { request, ttl } = t.context as Test;
 
-  t.is((await request.post("/views")).body, 1);
+  t.is((await request.post('/views')).body, 1);
 
   // Manage to touch before ttl expires.
   await sleep(ttl / 2);
-  t.is((await request.get("/views")).body, 1);
+  t.is((await request.get('/views')).body, 1);
 
   // Again.
   await sleep(ttl / 2);
-  t.is((await request.get("/views")).body, 1);
+  t.is((await request.get('/views')).body, 1);
 
   // Finally let session expire.
   await sleep(ttl);
-  t.is((await request.get("/views")).body, 0);
+  t.is((await request.get('/views')).body, 0);
 });
 
-test("touches, handling error", async (t) => {
+test('touches, handling error', async (t) => {
   const ctx = t.context as Test;
 
-  t.is((await ctx.request.post("/views")).body, 1);
+  t.is((await ctx.request.post('/views')).body, 1);
 
   await ctx.componentWillUnmount();
 
-  await ctx.request.get("/views").expect(/database.*not\ established/i);
+  await ctx.request.get('/views').expect(/database.*not established/i);
 });
 
-test("race condition", async (t) => {
+test('race condition', async (t) => {
   const { request, repository, blockLogout, unblockReq1 } = t.context as Test;
 
-  t.is((await request.post("/views")).body, 1);
-  t.is((await request.post("/views")).body, 2);
+  t.is((await request.post('/views')).body, 1);
+  t.is((await request.post('/views')).body, 2);
 
   // hold logout until triggered by req to /race
   blockLogout.then(async () => {
-    await request.delete("/views");
+    await request.delete('/views');
     // let /race continue
     unblockReq1();
   });
   // call to /race returns as expected as logout happens in between
   // because session.views was 2, race increments and returns 3
-  t.is((await request.post("/race")).body, 3);
+  t.is((await request.post('/race')).body, 3);
 
   // the record in the db should be deleted and should NOT be updated
   // i.e. views should still be at 2, not re-saved to 3
@@ -153,31 +145,31 @@ test("race condition", async (t) => {
   t.is(JSON.parse(records[0].json).views, 2);
 
   // session was deleted, so a new call results in a new session
-  t.is((await request.post("/views")).body, 1);
+  t.is((await request.post('/views')).body, 1);
 });
 
-test("cleanup after session destroy", async (t) => {
+test('cleanup after session destroy', async (t) => {
   const { request, repository, ttl, express } = t.context as Test;
   const request1 = Supertest.agent(express);
-  t.is((await request.post("/views")).body, 1);
+  t.is((await request.post('/views')).body, 1);
 
   // precondition; there is 1 session in the repository
-  t.is((await repository.count({ withDeleted: true })), 1);
+  t.is(await repository.count({ withDeleted: true }), 1);
 
   // explicit logout
-  await request.delete("/views");
+  await request.delete('/views');
 
   // another session starts before the original expires
   await sleep(ttl / 2);
-  t.is((await request1.post("/views")).body, 1);
-  t.is((await repository.count({ withDeleted: true })), 2);
+  t.is((await request1.post('/views')).body, 1);
+  t.is(await repository.count({ withDeleted: true }), 2);
 
   // allow the original session to reach natural expiry
   await sleep(ttl / 2);
-  t.is((await request1.post("/views")).body, 2);
+  t.is((await request1.post('/views')).body, 2);
 
   // verify original record was removed with cleanup
-  t.is((await repository.count({ withDeleted: true })), 1);
+  t.is(await repository.count({ withDeleted: true }), 1);
 });
 
 test.afterEach(async (t) => {
@@ -189,14 +181,14 @@ test.afterEach(async (t) => {
 @Entity()
 class Session implements ISession {
   @Index()
-  @Column("bigint", { transformer: { from: Number, to: Number } })
+  @Column('bigint', { transformer: { from: Number, to: Number } })
   public expiredAt = Date.now();
 
-  @PrimaryColumn("varchar", { length: 255 })
-  public id = "";
+  @PrimaryColumn('varchar', { length: 255 })
+  public id = '';
 
-  @Column("text")
-  public json = "";
+  @Column('text')
+  public json = '';
 
   @DeleteDateColumn()
   public destroyedAt?: Date;
@@ -220,17 +212,17 @@ class Test {
 
   public async componentDidMount() {
     this.dataSource = await new DataSource({
-      database: ":memory:",
+      database: ':memory:',
       entities: [Session],
       // logging: ["query", "error"],
       synchronize: true,
-      type: "sqlite",
+      type: 'sqlite',
     }).initialize();
 
-    this.blockReq1 = new Promise((resolve, _) => {
+    this.blockReq1 = new Promise((resolve) => {
       this.unblockReq1 = resolve;
     });
-    this.blockLogout = new Promise((resolve, _) => {
+    this.blockLogout = new Promise((resolve) => {
       this.unblockLogout = resolve;
     });
 
@@ -246,24 +238,22 @@ class Test {
           limitSubquery: false,
           ttl: this.ttl,
         }).connect(this.repository),
-      }),
+      })
     );
 
-    this.express.delete("/views", (req, res) => {
+    this.express.delete('/views', (req, res) => {
       const session = nullthrows(req.session);
 
-      session.destroy((error) =>
-        res.status(error ? 500 : 200).json(error || null),
-      );
+      session.destroy((error) => res.status(error ? 500 : 200).json(error || null));
     });
 
-    this.express.get("/views", (req, res) => {
+    this.express.get('/views', (req, res) => {
       const session = nullthrows(req.session);
 
       res.json((session as any).views || 0);
     });
 
-    this.express.post("/views", (req, res) => {
+    this.express.post('/views', (req, res) => {
       const session = nullthrows(req.session);
 
       (session as any).views = ((session as any).views || 0) + 1;
@@ -271,7 +261,7 @@ class Test {
       res.json((session as any).views);
     });
 
-    this.express.post("/race", async (req, res) => {
+    this.express.post('/race', async (req, res) => {
       const session = nullthrows(req.session);
 
       (session as any).views = ((session as any).views || 0) + 1;
