@@ -1,6 +1,11 @@
-# connect-typeorm
+<div align="center">
+  <h1>🔗 connect-typeorm</h1>
+  <h3>A TypeORM-based session store.<h3><br/>
 
-A TypeORM-based session store.
+[![CodeFactor](https://www.codefactor.io/repository/github/freshgiammi-lab/connect-typeorm/badge)](https://www.codefactor.io/repository/github/freshgiammi-lab/connect-typeorm)
+[![GitHub Repo stars](https://img.shields.io/github/stars/freshgiammi-lab/connect-typeorm)](https://github.com/freshgiammi-lab/connect-typeorm/stargazers)
+
+</div>
 
 ## Setup & Usage
 
