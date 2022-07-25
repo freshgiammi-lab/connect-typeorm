@@ -3,11 +3,12 @@
  * Copyright(c) 2012 TJ Holowaychuk <tj@vision-media.ca>
  * Copyright(c) 2017, 2018 makepost <makepost@firemail.cc>
  * Copyright(c) 2018 Nathan Phillip Brink <ohnobinki@ohnopublishing.net>
+ * Copyright(c) 2022 Gianmarco Rengucci <rengucci.gianmarco@gmail.com>
  * MIT Licensed
  */
 
 import * as Debug from 'debug';
-import { SessionOptions, Store } from 'express-session';
+import { SessionData, SessionOptions, Store } from 'express-session';
 import { IsNull, Repository } from 'typeorm';
 import { ISession } from '../../domain/Session/ISession';
 
@@ -16,7 +17,7 @@ import { ISession } from '../../domain/Session/ISession';
  */
 const oneDay = 86400;
 
-export type Ttl = number | ((store: TypeormStore, sess: any, sid?: string) => number);
+export type Ttl = number | ((store: TypeormStore, sess: SessionData, sid?: string) => number);
 
 export class TypeormStore extends Store {
   private cleanupLimit: number | undefined;
@@ -39,7 +40,7 @@ export class TypeormStore extends Store {
       }
     > = {}
   ) {
-    super(options as any);
+    super();
     this.cleanupLimit = options.cleanupLimit;
     if (options.limitSubquery !== undefined) {
       this.limitSubquery = options.limitSubquery;
@@ -57,7 +58,7 @@ export class TypeormStore extends Store {
   /**
    * Attempts to fetch session by the given `sid`.
    */
-  public get = (sid: string, fn: (error?: any, result?: any) => void) => {
+  public get = (sid: string, fn: (error?: Error | undefined, result?: SessionData) => void) => {
     this.debug('GET "%s"', sid);
 
     this.createQueryBuilder()
@@ -69,11 +70,11 @@ export class TypeormStore extends Store {
         }
 
         this.debug('GOT %s', session.json);
+        const result = session.json;
 
-        const result = JSON.parse(session.json);
         fn(undefined, result);
       })
-      .catch((er) => {
+      .catch((er: Error) => {
         fn(er);
         this.handleError(er);
       });
@@ -82,17 +83,21 @@ export class TypeormStore extends Store {
   /**
    * Commits the given `sess` object associated with the given `sid`.
    */
-  public set = (sid: string, sess: any, fn?: (error?: any) => void) => {
+  public set = (sid: string, sess: SessionData, fn?: (error?: Error) => void) => {
     const args = [sid];
-    let json: string;
+    let json: SessionData;
 
     try {
-      json = JSON.stringify(sess);
-    } catch (er) {
-      return fn ? fn(er) : undefined;
+      json = sess;
+    } catch (er: unknown) {
+      if (er instanceof Error) {
+        return fn ? fn(er) : undefined;
+      } else {
+        return fn ? fn(new Error('serialize error')) : undefined;
+      }
     }
 
-    args.push(json);
+    args.push(JSON.stringify(json));
 
     const ttl = this.getTTL(sess, sid);
     args.push('EX', ttl.toString());
@@ -129,7 +134,7 @@ export class TypeormStore extends Store {
             {
               destroyedAt: IsNull(),
               id: sid,
-            } as any,
+            },
             {
               expiredAt: Date.now() + ttl * 1000,
               json,
@@ -150,7 +155,7 @@ export class TypeormStore extends Store {
           fn();
         }
       })
-      .catch((er: any) => {
+      .catch((er) => {
         if (fn) {
           fn(er);
         }
@@ -162,7 +167,7 @@ export class TypeormStore extends Store {
   /**
    * Destroys the session associated with the given `sid`.
    */
-  public destroy = (sid: string | string[], fn?: (error?: any) => void) => {
+  public destroy = (sid: string | string[], fn?: (error?: Error) => void) => {
     this.debug('DEL "%s"', sid);
 
     Promise.all(
@@ -187,7 +192,7 @@ export class TypeormStore extends Store {
   /**
    * Refreshes the time-to-live for the session with the given `sid`.
    */
-  public touch = (sid: string, sess: any, fn?: (error?: any) => void) => {
+  public touch = (sid: string, sess: SessionData, fn?: (error?: Error) => void) => {
     const ttl = this.getTTL(sess);
 
     if (sess?.cookie?.expires) {
@@ -222,14 +227,14 @@ export class TypeormStore extends Store {
   /**
    * Fetches all sessions.
    */
-  public all = (fn: (error: any, result: any) => void) => {
-    let result: any[] = [];
+  public all = (fn: (error: Error | undefined, result: SessionData[]) => void) => {
+    let result: SessionData[] = [];
 
     this.createQueryBuilder()
       .getMany()
       .then((sessions) => {
         result = sessions.map((session) => {
-          const sess = JSON.parse(session.json);
+          const sess = session.json;
           sess.id = session.id;
           return sess;
         });
@@ -248,7 +253,7 @@ export class TypeormStore extends Store {
       .where('session.expiredAt > :expiredAt', { expiredAt: Date.now() });
   }
 
-  private getTTL(sess: any, sid?: string) {
+  private getTTL(sess: SessionData, sid?: string) {
     if (typeof this.ttl === 'number') {
       return this.ttl;
     }

@@ -1,6 +1,3 @@
-// tslint:disable:max-classes-per-file
-// tslint:disable:no-implicit-dependencies
-
 import test from 'ava';
 import * as Express from 'express';
 import * as ExpressSession from 'express-session';
@@ -142,7 +139,7 @@ test('race condition', async (t) => {
   // the record in the db should be deleted and should NOT be updated
   // i.e. views should still be at 2, not re-saved to 3
   const records = await repository.find({ withDeleted: true });
-  t.is(JSON.parse(records[0].json).views, 2);
+  t.is(records[0].json.views, 2);
 
   // session was deleted, so a new call results in a new session
   t.is((await request.post('/views')).body, 1);
@@ -187,8 +184,8 @@ class Session implements ISession {
   @PrimaryColumn('varchar', { length: 255 })
   public id = '';
 
-  @Column('text')
-  public json = '';
+  @Column({ type: 'simple-json' })
+  public json!: ExpressSession.SessionData;
 
   @DeleteDateColumn()
   public destroyedAt?: Date;
@@ -203,10 +200,11 @@ class Test {
 
   public ttl = 2;
 
-  public unblockReq1: any = null;
-  public unblockLogout: any = null;
-  public blockReq1: any = null;
-  public blockLogout: any = null;
+  // 'strictPropertyInitialization': false is required in tsconfig for this to work.
+  public unblockReq1: (value?: unknown) => void;
+  public unblockLogout: (value?: unknown) => void;
+  public blockReq1: Promise<unknown>;
+  public blockLogout: Promise<unknown>;
 
   private dataSource: DataSource | undefined;
 
@@ -250,25 +248,25 @@ class Test {
     this.express.get('/views', (req, res) => {
       const session = nullthrows(req.session);
 
-      res.json((session as any).views || 0);
+      res.json(session.views || 0);
     });
 
     this.express.post('/views', (req, res) => {
       const session = nullthrows(req.session);
 
-      (session as any).views = ((session as any).views || 0) + 1;
+      session.views = (session.views || 0) + 1;
 
-      res.json((session as any).views);
+      res.json(session.views);
     });
 
     this.express.post('/race', async (req, res) => {
       const session = nullthrows(req.session);
 
-      (session as any).views = ((session as any).views || 0) + 1;
+      session.views = (session.views || 0) + 1;
 
       this.unblockLogout();
       this.blockReq1.then(() => {
-        return res.json((session as any).views);
+        return res.json(session.views);
       });
     });
   }

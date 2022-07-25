@@ -11,6 +11,7 @@
     "noUnusedParameters": true,
     "experimentalDecorators": true,
     "emitDecoratorMetadata": true,
-    "declaration": true
+    "declaration": true,
+    "strictPropertyInitialization": false
   }
 }
